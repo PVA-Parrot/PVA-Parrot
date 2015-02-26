@@ -1,0 +1,2 @@
+{:require  [pva-parrot.app]
+ :init-fns [pva-parrot.app/init]}

@@ -9,3 +9,7 @@ pom.xml.asc
 .lein-repl-history
 .lein-plugins/
 .lein-failures
+/src/clj/pva_parrot/styles.clj
+/src/cljs/pva_parrot/app.cljs
+/org/pva-parrot.html
+/build.boot

@@ -1,0 +1,148 @@
+#+TITLE: PVA-Parrot: An application for polytopic vector analysis
+#+AUTHOR: Nils Blum-Oeste
+#+EMAIL: nils@blum-oeste.de
+#+LANGUAGE: en
+#+STARTUP: align lognotestate
+#+INFOJS_OPT: view:info toc:t
+#+HTML_DOCTYPE: html5
+#+HTML_CONTAINER_CLASS: container
+#+HTML_HEAD: <script src="http://code.jquery.com/jquery-2.1.3.min.js"></script>
+#+HTML_HEAD: <script src="http://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
+#+HTML_HEAD: <script src="http://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/languages/clojure.min.js"></script>
+#+HTML_HEAD: <script src="http://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/languages/bash.min.js"></script>
+#+HTML_HEAD: <script src="weave-resources/export.js"></script>
+#+HTML_HEAD: <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/monokai.min.css">
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css" />
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="weave-resources/htmlize.css" />
+
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:nil html-preamble:t html-scripts:t html-style:nil html5-fancy:t
+#+OPTIONS: tex:t
+
+* Introduction
+  PVA-Parrot is an application for doing polytopic vector analysis. This is the main application.
+
+* Project Setup
+
+  Boot needs to be installed:
+  #+BEGIN_SRC bash
+  $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
+  #+END_SRC
+
+** Boot project setup
+
+   #+BEGIN_SRC clojure :tangle ../build.boot
+   (set-env!
+     :source-paths #{"src/cljs" "src/clj"}
+     :resource-paths #{"resources"}
+     :dependencies '[[org.clojure/clojurescript "0.0-2814"]
+                     [adzerk/boot-cljs      "0.0-2814-1" :scope "test"]
+                     [adzerk/boot-reload    "0.2.4"      :scope "test"]
+                     [pandeiro/boot-http    "0.6.1"      :scope "test"]
+                     [jeluard/boot-notify   "0.1.1"      :scope "test"]
+                     [boot-garden           "1.2.5-2"    :scope "test"]
+                     [reagent "0.5.0-alpha3"]])
+
+   (require
+     '[adzerk.boot-cljs      :refer [cljs]]
+     '[adzerk.boot-reload    :refer [reload]]
+     '[pandeiro.boot-http    :refer [serve]]
+     '[boot-garden.core      :refer [garden]]
+     '[jeluard.boot-notify   :refer [notify]])
+
+
+   (deftask build []
+     (comp
+       (notify)
+       (cljs)
+       (garden :styles-var 'pva-parrot.styles/base
+         :vendors ["webkit"]
+         :auto-prefix #{:align-items}
+         :output-to "css/garden.css")))
+
+   (deftask dev-run []
+     (comp (serve)
+       (watch)
+       (reload)
+       (build)))
+
+   (deftask production []
+     (task-options! cljs {:optimizations :advanced
+                          :compiler-options {:closure-defines {:goog.DEBUG false}}}
+       garden {:pretty-print false})
+     identity)
+
+   (deftask development []
+     (task-options! cljs {:optimizations :none
+                          :unified-mode true
+                          :source-map true}
+       reload {:on-jsload 'pva-parrot.app/init})
+     identity)
+
+   (deftask prod
+     "Simple alias to run application in production mode
+      No REPL or automatic reloading code inserted."
+     []
+     (comp (production)
+       (serve)
+       (watch)
+       (build)))
+
+   (deftask dev
+     "Simple alias to run application in development mode"
+     []
+     (comp (development)
+       (dev-run)))
+   #+END_SRC
+
+** HTML entry point
+   #+BEGIN_SRC html :tangle ../resources/index.html
+   <!doctype html>
+   <html>
+     <head>
+       <meta charset="utf-8">
+       <title>hi, world!</title>
+       <link href="css/normalize.min.css" rel="stylesheet" type="text/css" media="screen">
+       <link href="css/garden.css" rel="stylesheet" type="text/css" media="screen">
+     </head>
+     <body>
+       <h1>Loading...</h1>
+       <div id="container"></div>
+       <script type="text/javascript" src="js/app.js"></script>
+     </body>
+   </html>
+   #+END_SRC
+
+** JS entry point
+   #+BEGIN_SRC clojure :tangle ../resources/js/app.cljs.edn
+   {:require  [pva-parrot.app]
+    :init-fns [pva-parrot.app/init]}
+   #+END_SRC
+* App Namespace
+  #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/app.cljs
+  (ns pva-parrot.app
+    (:require [reagent.core]))
+
+  (defonce app-state (atom {:heading "PVA Parrot"}))
+
+  (defn welcome-component []
+    [:div
+     [:h1 (:heading @app-state)]])
+
+  (defn init []
+    (reagent.core/render-component [welcome-component]
+      (.-body js/document)))
+  #+END_SRC
+
+* CSS Styles
+  #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/styles.clj
+  (ns pva-parrot.styles
+    (:require [garden.def :refer [defrule defstyles]]
+              [garden.stylesheet :refer [rule]]))
+
+  (defstyles base
+    [:* {:box-sizing "border-box"}]
+    [:body
+     {:font-family "Helvetica Neue"
+      :font-size   "16px"
+      :line-height 1.5}])
+  #+END_SRC

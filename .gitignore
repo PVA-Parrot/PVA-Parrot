@@ -13,3 +13,4 @@ pom.xml.asc
 /src/cljs/pva_parrot/app.cljs
 /org/pva-parrot.html
 /build.boot
+org/*\[\*Org*

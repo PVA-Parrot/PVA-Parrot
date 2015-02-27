@@ -100,13 +100,19 @@
    <html>
      <head>
        <meta charset="utf-8">
-       <title>hi, world!</title>
-       <link href="css/normalize.min.css" rel="stylesheet" type="text/css" media="screen">
+       <title>PVA Parrot</title>
+       <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css" media="screen">
        <link href="css/garden.css" rel="stylesheet" type="text/css" media="screen">
      </head>
      <body>
-       <h1>Loading...</h1>
-       <div id="container"></div>
+       <div id="container" class="container">
+         <!-- loading screen -->
+         <div class="jumbotron">
+           <img src="img/parrot.png"  class="img-responsive" />
+           <h3>PVA Parrot loading...</h3>
+           <p>Initializing application, please wait...</p>
+         </div>
+       </div>
        <script type="text/javascript" src="js/app.js"></script>
      </body>
    </html>
@@ -117,21 +123,25 @@
    {:require  [pva-parrot.app]
     :init-fns [pva-parrot.app/init]}
    #+END_SRC
+
 * App Namespace
   #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/app.cljs
-  (ns pva-parrot.app
-    (:require [reagent.core]))
+    (ns pva-parrot.app
+      (:require [reagent.core]))
 
-  (defonce app-state (atom {:heading "PVA Parrot"}))
+    (defonce app-state (atom {:heading "PVA Parrot"}))
 
-  (defn welcome-component []
-    [:div
-     [:h1 (:heading @app-state)]])
+    (defn welcome-component []
+      [:div [:div.jumbotron
+             [:img.img-responsive {:src "img/parrot.png"}]
+             [:h1 (:heading @app-state)]
+             [:h2 "An application for polytopic vector analysis"]]])
 
-  (defn init []
-    (reagent.core/render-component [welcome-component]
-      (.-body js/document)))
+    (defn init []
+      (reagent.core/render-component [welcome-component]
+        (js/document.getElementById "container")))
   #+END_SRC
+
 
 * CSS Styles
   #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/styles.clj

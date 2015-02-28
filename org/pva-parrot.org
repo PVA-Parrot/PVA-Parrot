@@ -141,7 +141,61 @@
     :init-fns [pva-parrot.app/init]}
    #+END_SRC
 
-* App Namespace
+
+* Libraries
+
+  Libraries will be factored out and put into dedicated git repos later.
+
+** Calculations
+
+   Libraries for running calculations on data.
+
+** Project Handling
+
+   Libraries to manage and handle PVA projects and their resources. Includes version control and backup for projects.
+
+** I/O
+
+   Libraries for getting data in and out of the app. This includes for example file, database and web service access.
+
+** Plotting
+
+   Libraries for plotting data.
+
+  #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/plot.cljs
+   (ns pva-parrot.plot)
+
+   (defn- plot []
+     (let [data [{:label "foo"
+                  :points {:show true}
+                  :color "#E72510"
+                  :data (take 1000 (repeatedly (fn [_] [(rand 200) (rand 600)])))}]
+           plot-options {:grid {:hoverable true
+                                :clickable true}}]
+       (.plot js/$ "#placeholder" (clj->js data) (clj->js plot-options))))
+
+   (def plot-component
+     (with-meta
+       (fn []
+          [:div#placeholder {:style {:width "100%" :height "500px"}}])
+       {:component-did-mount plot}))
+   #+END_SRC
+
+** Desktop App Shells
+
+   Libraries to run the app as a desktop application. Candidates for this are node-webkit and atom-shell.
+
+** Backend Service
+
+   Libraries handling the communication with a backend server, potentially could include the serice itself. A backend
+   server is especially imporant if the app is not build and used as a desktop application with a corresponding app
+   shell and thus not having access to file system etc.
+
+
+* GUI Application
+
+  The main namespace and entry point of the app.
+
   #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/app.cljs
   (ns pva-parrot.app
     (:require [pva-parrot.plot :as plot]
@@ -179,24 +233,6 @@
       (js/document.getElementById "container")))
   #+END_SRC
 
-  #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/plot.cljs
-  (ns pva-parrot.plot)
-
-  (defn- plot []
-    (let [data [{:label "foo"
-                 :points {:show true}
-                 :color "#E72510"
-                 :data (take 1000 (repeatedly (fn [_] [(rand 200) (rand 600)])))}]
-          plot-options {:grid {:hoverable true
-                               :clickable true}}]
-      (.plot js/$ "#placeholder" (clj->js data) (clj->js plot-options))))
-
-  (def plot-component
-    (with-meta
-      (fn []
-         [:div#placeholder {:style {:width "100%" :height "500px"}}])
-      {:component-did-mount plot}))
-  #+END_SRC
 
 * CSS Styles
   #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/styles.clj

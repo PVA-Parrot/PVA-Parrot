@@ -28,6 +28,19 @@
   $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
   #+END_SRC
 
+
+** JVM Config and Java 8
+
+   boot-clj suggests some options for boot to prevent issues with the JVM: [[https://github.com/boot-clj/boot/wiki/JVM-Options][boot JVM Options]]
+
+   #+BEGIN_SRC bash
+   $ echo $BOOT_JVM_OPTIONS
+   -Xmx2g -client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:MaxPermSize=128m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xverify:none
+   #+END_SRC
+
+   I still had memory issues when running boot tasks. Upgrading to Java 8 seems to have fixed theses issues. So I
+   recomment using Java 8.
+
 ** Boot project setup
 
    #+BEGIN_SRC clojure :tangle ../build.boot

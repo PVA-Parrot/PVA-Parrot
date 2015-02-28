@@ -144,42 +144,58 @@
 * App Namespace
   #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/app.cljs
   (ns pva-parrot.app
-    (:require [reagent.core :as reagent :refer [atom]]))
+    (:require [pva-parrot.plot :as plot]
+              [reagent.core :as reagent :refer [atom]]))
 
   (defonce app-state (atom {:heading "PVA Parrot"
+                            :page :welcome
                             :show-plot false}))
 
-  (defn plot []
+  (defn pages-button [target text]
+    [:button.btn.btn-primary.btn-lg
+     {:on-click #(swap! app-state assoc :page target)}
+     text])
+
+  (defn welcome-page []
+    [:div.jumbotron
+     [:img.img-responsive {:src "img/parrot.png"}]
+     [:h1 (:heading @app-state)]
+     [:h2 "An application for polytopic vector analysis"]
+     [:hr]
+     [pages-button :plot "Show Example Plot"]])
+
+  (defn plot-page []
+    [:div
+     [plot/plot-component]
+     [pages-button :welcome "Show Welcome Screen"]])
+
+  (defn page-component []
+    (let [pages {:welcome [welcome-page]
+                  :plot [plot-page]}]
+      ((:page @app-state) pages)))
+
+  (defn init []
+    (reagent.core/render-component [page-component]
+      (js/document.getElementById "container")))
+  #+END_SRC
+
+  #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/plot.cljs
+  (ns pva-parrot.plot)
+
+  (defn- plot []
     (let [data [{:label "foo"
-                 :hoverable true
-                 :clickable true
                  :points {:show true}
-                 :lines {:show true}
-                 :data (take 10 (repeatedly (fn [_] [(rand 1) (rand 1)])))}]
-          plot-options {:hoverable true :clickable true}]
+                 :color "#E72510"
+                 :data (take 1000 (repeatedly (fn [_] [(rand 200) (rand 600)])))}]
+          plot-options {:grid {:hoverable true
+                               :clickable true}}]
       (.plot js/$ "#placeholder" (clj->js data) (clj->js plot-options))))
 
   (def plot-component
     (with-meta
-      (fn [] [:div#placeholder {:style {:width "100%" :height "500px"}}])
+      (fn []
+         [:div#placeholder {:style {:width "100%" :height "500px"}}])
       {:component-did-mount plot}))
-
-  (defn welcome-component []
-    [:div
-     (when (not (:show-plot @app-state))
-       [:div.jumbotron
-        [:img.img-responsive {:src "img/parrot.png"}]
-        [:h1 (:heading @app-state)]
-        [:h2 "An application for polytopic vector analysis"]
-        [:hr]])
-     (when (:show-plot @app-state) [plot-component])
-     [:button.btn.btn-primary.btn-lg
-      {:on-click #(swap! app-state assoc :show-plot (not (:show-plot @app-state)))}
-      "Toggle Example Plot"]])
-
-  (defn init []
-    (reagent.core/render-component [welcome-component]
-      (js/document.getElementById "container")))
   #+END_SRC
 
 * CSS Styles

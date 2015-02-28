@@ -14,3 +14,4 @@ pom.xml.asc
 /org/pva-parrot.html
 /build.boot
 org/*\[\*Org*
+/src/cljs/pva_parrot/plot.cljs

@@ -486,11 +486,14 @@
     #+END_SRC
 
 *** Websockets
+
+    Websocket related routes:
     #+BEGIN_SRC clojure :noweb-ref "backend service websocket routes"
     (GET  "/chsk" request (ring-ajax-get-or-ws-handshake request))
     (POST "/chsk" request (ring-ajax-post                request))
     #+END_SRC
 
+    Set up the server side websocket communication handlers:
     #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
     (let [{:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
           (sente/make-channel-socket! {})]
@@ -500,6 +503,20 @@
       (def chsk-send!                    send-fn)
       (def connected-uids                connected-uids))
     #+END_SRC
+
+**** Event handling
+     Incoming events are handled by a multimethod wich dispatches on the =:id=
+     of the event.
+
+     #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
+     (defmulti event-msg-handler :id)
+
+     (defmethod event-msg-handler :default
+       [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+       (println "Unhandled event: %s", event)
+       (when ?reply-fn
+         (?reply-fn {:unmatched-event-as-echoed-from-server event})))
+     #+END_SRC
 
 *** Middlewares
 

@@ -16,3 +16,7 @@ pre.src {
     font-size: large;
     padding: 0.5em;
 }
+
+span.code-highlighted {
+    border-bottom: 2px solid red;
+}

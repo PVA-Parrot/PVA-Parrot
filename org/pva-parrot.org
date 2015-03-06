@@ -20,6 +20,8 @@
 
 #+PROPERTY: mkdirp yes
 
+* TODO org file needs to be split, gets way too slow
+
 * Introduction
   PVA-Parrot is an application for doing polytopic vector analysis. This is the
   main application.
@@ -251,14 +253,15 @@
 
     #+BEGIN_SRC clojure
 
-    (defonce app-state (atom {:page :welcome}))
+    (defonce app-state (atom {:page :welcome
+                              :import-file nil}))
 
     #+END_SRC
 
     App state consists of the following data:
 
     - :page :: the page currently active
-
+    - :import-file :: file to be imported/uploaded
 
     -----
     *Updating app state*
@@ -270,6 +273,26 @@
     (defn swap-page [target]
       (swap! app-state assoc :page target))
 
+    #+END_SRC
+
+    To import text files, they get stored in in the =app-state= atom. The HTML5
+    =FileReader= gets used to retrieve the file contents.
+
+    #+BEGIN_SRC clojure
+    (defn store-text-file!
+      "Reads a file as text and swaps the result into the app-state for the given key."
+      [file key]
+      (let [reader (js/FileReader.)]
+        (set! (.-onload reader)
+          (fn [event]
+            (let [file-content (aget event "target" "result")]
+              (swap! app-state assoc key file-content))))
+        (.readAsText reader file)))
+
+    (defn import-file!
+      [event]
+      (let [file (aget event "target" "files" 0)]
+        (store-text-file! file :import-file)))
     #+END_SRC
 
 *** UI components
@@ -312,13 +335,21 @@
 
     #+BEGIN_SRC clojure
     (defn file-input []
-      [:input.btn {:name "import-file" :type "file" :accept "text/*"}])
+      [:input.btn {:name "import-file" :type "file" :accept "text/*"
+                   :on-change import-file!}])
+
+    (defn submit-file []
+      (let [file-body (:import-file @app-state)
+            event-data {:file-body file-body}]
+        (websockets/chsk-send! [:pva-parrot/import-file event-data])))
 
     (defn submit-file-component [text]
-      [:form {:action "/file" :method "POST"}
-       [:label "Import a file:"]
+      [:div
+       [:p "Import a file:"]
        [file-input]
-       [styled-button :style "primary" :contents "Import file"]])
+       [styled-button :style "primary"
+        :contents "Import file"
+        :click-handler submit-file]])
     #+END_SRC
 
 *** Pages
@@ -448,7 +479,6 @@
    :PROPERTIES:
    :CUSTOM_ID: libs-backend
    :END:
-
 
    Libraries handling the communication with a backend server, potentially could
    include the service itself. A backend server is especially imporant if the app

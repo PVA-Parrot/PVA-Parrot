@@ -18,96 +18,264 @@
 #+OPTIONS: html-link-use-abs-url:nil html-postamble:nil html-preamble:t html-scripts:t html-style:nil html5-fancy:t
 #+OPTIONS: tex:t
 
+#+PROPERTY: mkdirp yes
+
 * Introduction
-  PVA-Parrot is an application for doing polytopic vector analysis. This is the main application.
+  PVA-Parrot is an application for doing polytopic vector analysis. This is the
+  main application.
 
-* Project Setup
+* Project Information
 
-  Boot needs to be installed:
-  #+BEGIN_SRC bash
-  $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
+  The application version:
+  #+BEGIN_SRC clojure :noweb-ref version
+  "0.1.0"
   #+END_SRC
 
+  The application description:
+  #+BEGIN_SRC clojure :noweb-ref description
+  "A GUI application for polytopic vector analysis (PVA)."
+  #+END_SRC
 
-** JVM Config and Java 8
+* Developing and building
 
-   boot-clj suggests some options for boot to prevent issues with the JVM: [[https://github.com/boot-clj/boot/wiki/JVM-Options][boot JVM Options]]
+ Instructions about developing and building the application.
 
+** Prerequisites
+   A JVM installation is required.
+
+   Boot needs to be installed:
    #+BEGIN_SRC bash
-   $ echo $BOOT_JVM_OPTIONS
-   -Xmx2g -client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:MaxPermSize=128m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xverify:none
+   $ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
    #+END_SRC
-
-   I still had memory issues when running boot tasks. Upgrading to Java 8 seems to have fixed theses issues. So I
-   recomment using Java 8.
 
 ** Boot project setup
+    #+BEGIN_SRC clojure :noweb no-export :tangle ../build.boot
+    (set-env!
+      <<boot source paths>>
+      <<boot resource paths>>
+      <<boot dependencies>>)
 
-   #+BEGIN_SRC clojure :tangle ../build.boot
-   (set-env!
-     :source-paths #{"src/cljs" "src/clj"}
-     :resource-paths #{"resources"}
-     :dependencies '[[org.clojure/clojurescript "0.0-2814"]
-                     [adzerk/boot-cljs      "0.0-2814-1" :scope "test"]
-                     [adzerk/boot-reload    "0.2.4"      :scope "test"]
-                     [pandeiro/boot-http    "0.6.1"      :scope "test"]
-                     [jeluard/boot-notify   "0.1.1"      :scope "test"]
-                     [boot-garden           "1.2.5-2"    :scope "test"]
-                     [reagent "0.5.0-alpha3"]])
+    <<boot tasks>>
 
-   (require
-     '[adzerk.boot-cljs      :refer [cljs]]
-     '[adzerk.boot-reload    :refer [reload]]
-     '[pandeiro.boot-http    :refer [serve]]
-     '[boot-garden.core      :refer [garden]]
-     '[jeluard.boot-notify   :refer [notify]])
+    (task-options!
+      <<boot tasks options>>)
+    #+END_SRC
 
+*** Classpath declarations
 
-   (deftask build []
-     (comp
-       (notify)
-       (cljs)
-       (garden :styles-var 'pva-parrot.styles/base
-         :vendors ["webkit"]
-         :auto-prefix #{:align-items}
-         :output-to "css/garden.css")))
+    Source paths are where source code files reside, both Clojure and
+    Clojurescript paths are given and namespaces will be added to the classpath
+    by boot.
 
-   (deftask dev-run []
-     (comp (serve)
-       (watch)
-       (reload)
-       (build)))
+    #+BEGIN_SRC clojure :noweb-ref "boot source paths"
+      :source-paths #{"src/cljs" "src/clj"}
+    #+END_SRC
 
-   (deftask production []
-     (task-options! cljs {:optimizations :advanced
-                          :compiler-options {:closure-defines {:goog.DEBUG false}}}
-       garden {:pretty-print false})
-     identity)
+    The resource paths will be on the classpath, too. Files in the resource
+    paths will be treated as final articats in the build.
 
-   (deftask development []
-     (task-options! cljs {:optimizations :none
-                          :unified-mode true
-                          :source-map true}
-       reload {:on-jsload 'pva-parrot.app/init})
-     identity)
+    #+BEGIN_SRC clojure :noweb-ref "boot resource paths"
+      :resource-paths #{"resources"}
+    #+END_SRC
 
-   (deftask prod
-     "Simple alias to run application in production mode
-      No REPL or automatic reloading code inserted."
-     []
-     (comp (production)
-       (serve)
-       (watch)
-       (build)))
+*** Dependencies declaration
+    :PROPERTIES:
+    :noweb-ref: boot dependencies
+    :END:
 
-   (deftask dev
-     "Simple alias to run application in development mode"
-     []
-     (comp (development)
-       (dev-run)))
+   The provided dependencies need to be enclosed in a quoted vector:
+   #+BEGIN_SRC clojure
+   :dependencies '[
    #+END_SRC
 
+   - Clojurescript :: essential for the GUI client logic.
+   #+BEGIN_SRC clojure
+   [org.clojure/clojurescript "0.0-2814"]
+   #+END_SRC
+
+   - boot-cljs :: compilation of cljs files from boot tasks
+   #+BEGIN_SRC clojure
+   [adzerk/boot-cljs      "0.0-2814-1" :scope "test"]
+   #+END_SRC
+
+   - boot-reload :: trigger reload in browser when files changes
+   #+BEGIN_SRC clojure
+   [adzerk/boot-reload    "0.2.4"      :scope "test"]
+   #+END_SRC
+
+   - boot-http :: a simple HTTP serve task
+   #+BEGIN_SRC clojure
+   [pandeiro/boot-http    "0.6.1"      :scope "test"]
+   #+END_SRC
+
+   - boot-notify :: visual notifications of boot build status
+   #+BEGIN_SRC clojure
+   [jeluard/boot-notify   "0.1.1"      :scope "test"]
+   #+END_SRC
+
+   - boot-garden :: compile garden data to CSS
+   #+BEGIN_SRC clojure
+   [boot-garden           "1.2.5-2"    :scope "test"]
+   #+END_SRC
+
+   - reagent :: clojurescript library for Facebook React, used for UI
+        programming, linking app state with UI
+   #+BEGIN_SRC clojure
+   [reagent               "0.5.0-alpha3"]
+   #+END_SRC
+
+   Closing the quoted vector. Doing this in a separate source block, allows to
+   edit the dependencies independently without having to pay attention to the
+   closing bracket.
+   #+BEGIN_SRC clojure
+   ]
+    #+END_SRC
+
+*** Tasks definitions
+    :PROPERTIES:
+    :noweb-ref: boot tasks
+    :END:
+
+    #+BEGIN_SRC clojure
+    (require
+      '[adzerk.boot-cljs      :refer [cljs]]
+      '[adzerk.boot-reload    :refer [reload]]
+      '[pandeiro.boot-http    :refer [serve]]
+      '[boot-garden.core      :refer [garden]]
+      '[jeluard.boot-notify   :refer [notify]])
+
+
+    (deftask build []
+      (comp
+        (notify)
+        (cljs)
+        (garden :styles-var 'pva-parrot.styles/base
+          :vendors ["webkit"]
+          :auto-prefix #{:align-items}
+          :output-to "css/garden.css")))
+
+    (deftask dev-run []
+      (comp (serve)
+        (watch)
+        (reload)
+        (build)))
+
+    (deftask production []
+      (task-options! cljs {:optimizations :advanced
+                           :compiler-options {:closure-defines {:goog.DEBUG false}}}
+        garden {:pretty-print false})
+      identity)
+
+    (deftask development []
+      (task-options! cljs {:optimizations :none
+                           :unified-mode true
+                           :source-map true}
+        reload {:on-jsload 'pva-parrot.app/init})
+      identity)
+
+    (deftask prod
+      "Simple alias to run application in production mode
+       No REPL or automatic reloading code inserted."
+      []
+      (comp (production)
+        (serve)
+        (watch)
+        (build)))
+
+    (deftask dev
+      "Simple alias to run application in development mode"
+      []
+      (comp (development)
+        (dev-run)))
+    #+END_SRC
+
+
+*** Taks options
+    :PROPERTIES:
+    :noweb-ref: boot tasks options
+    :END:
+    The macro =task-options!= is used to specify options for tasks. It gets
+    passed pairs of tasks and this task's options as a map.
+
+    Options for creating a maven pom.xml project declaration file:
+    #+BEGIN_SRC clojure
+    pom {:project 'pva-parrot
+         :version <<version>>
+         :description <<description>>}
+    #+END_SRC
+
 *** TODO use CLJSJS
+** Troubleshooting
+*** JVM Config and Java 8
+
+    boot-clj suggests some options for boot to prevent issues with the JVM: [[https://github.com/boot-clj/boot/wiki/JVM-Options][boot JVM Options]]
+
+    #+BEGIN_SRC bash
+    $ echo $BOOT_JVM_OPTIONS
+    -Xmx2g -client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:MaxPermSize=128m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xverify:none
+    #+END_SRC
+
+    I still had memory issues when running boot tasks. Upgrading to Java 8 seems to have fixed theses issues. So I
+    recomment using Java 8.
+
+* GUI Application
+** Application logic
+
+  The main namespace and entry point of the app.
+
+  Execute =boot dev= to access the application on http://localhost:3000.
+
+  #+BEGIN_SRC clojure -r :tangle ../src/cljs/pva_parrot/app.cljs
+  (ns pva-parrot.app
+    (:require [pva-parrot.plot :as plot]
+              [reagent.core :as reagent :refer [atom]]))
+
+  (defonce app-state (atom {:heading "PVA Parrot"
+                            :page :welcome
+                            :show-plot false}))
+
+  (defn pages-button [target text]
+    [:button.btn.btn-primary.btn-lg
+     {:on-click #(swap! app-state assoc :page target)}
+     text])
+
+  (defn welcome-page []
+    [:div.jumbotron
+     [:img.img-responsive {:src "img/parrot.png"}]
+     [:h1 (:heading @app-state)]
+     [:h2 "An application for polytopic vector analysis"]
+     [:hr]
+     [pages-button :plot "Show Example Plot"]])
+
+  (defn plot-page []
+    [:div
+     [plot/plot-component]
+     [pages-button :welcome "Show Welcome Screen"]])
+
+  (defn page-component []
+    (let [pages {:welcome [welcome-page]
+                  :plot [plot-page]}]
+      ((:page @app-state) pages)))
+
+  (defn init []
+    (reagent.core/render-component [page-component]
+      (js/document.getElementById "container")))
+  #+END_SRC
+
+** CSS Styles
+
+   #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/styles.clj
+   (ns pva-parrot.styles
+     (:require [garden.def :refer [defrule defstyles]]
+               [garden.stylesheet :refer [rule]]))
+
+   (defstyles base
+     [:* {:box-sizing "border-box"}]
+     [:body
+      {:font-family "Helvetica Neue"
+       :font-size   "16px"
+       :line-height 1.5}])
+   #+END_SRC
 
 ** HTML entry point
    #+BEGIN_SRC html :tangle ../resources/index.html
@@ -140,7 +308,6 @@
    {:require  [pva-parrot.app]
     :init-fns [pva-parrot.app/init]}
    #+END_SRC
-
 
 * Libraries
 
@@ -190,60 +357,3 @@
    Libraries handling the communication with a backend server, potentially could include the serice itself. A backend
    server is especially imporant if the app is not build and used as a desktop application with a corresponding app
    shell and thus not having access to file system etc.
-
-
-* GUI Application
-
-  The main namespace and entry point of the app.
-
-  #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/app.cljs
-  (ns pva-parrot.app
-    (:require [pva-parrot.plot :as plot]
-              [reagent.core :as reagent :refer [atom]]))
-
-  (defonce app-state (atom {:heading "PVA Parrot"
-                            :page :welcome
-                            :show-plot false}))
-
-  (defn pages-button [target text]
-    [:button.btn.btn-primary.btn-lg
-     {:on-click #(swap! app-state assoc :page target)}
-     text])
-
-  (defn welcome-page []
-    [:div.jumbotron
-     [:img.img-responsive {:src "img/parrot.png"}]
-     [:h1 (:heading @app-state)]
-     [:h2 "An application for polytopic vector analysis"]
-     [:hr]
-     [pages-button :plot "Show Example Plot"]])
-
-  (defn plot-page []
-    [:div
-     [plot/plot-component]
-     [pages-button :welcome "Show Welcome Screen"]])
-
-  (defn page-component []
-    (let [pages {:welcome [welcome-page]
-                  :plot [plot-page]}]
-      ((:page @app-state) pages)))
-
-  (defn init []
-    (reagent.core/render-component [page-component]
-      (js/document.getElementById "container")))
-  #+END_SRC
-
-
-* CSS Styles
-  #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/styles.clj
-  (ns pva-parrot.styles
-    (:require [garden.def :refer [defrule defstyles]]
-              [garden.stylesheet :refer [rule]]))
-
-  (defstyles base
-    [:* {:box-sizing "border-box"}]
-    [:body
-     {:font-family "Helvetica Neue"
-      :font-size   "16px"
-      :line-height 1.5}])
-  #+END_SRC

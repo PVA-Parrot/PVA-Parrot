@@ -235,6 +235,7 @@
 
     (ns pva-parrot.app
       (:require [pva-parrot.plot :as plot]
+                [pva-parrot.websockets :as websockets]
                 [reagent.core :as reagent :refer [atom]]))
 
     #+END_SRC
@@ -468,15 +469,39 @@
     #+BEGIN_SRC clojure :noweb no-export :tangle ../src/clj/pva_parrot/backend/service.clj
     (ns pva-parrot.backend.service
       (:require [ring.middleware.reload :as reload]
+                [ring.middleware.params :as params]
+                [ring.middleware.keyword-params :as keyword-params]
                 [compojure.core :refer :all]
                 [taoensso.sente :as sente]))
 
+    <<backend service websocket handlers>>
+
     (defroutes api-handlers
-      (GET "/" [] "You found the PVA Parrot backend service!"))
+      (GET "/" [] "You found the PVA Parrot backend service!")
+      <<backend service websocket routes>>
+      )
 
     <<backend service middlewares>>
 
     #+END_SRC
+
+*** Websockets
+    #+BEGIN_SRC clojure :noweb-ref "backend service websocket routes"
+    (GET  "/chsk" request (ring-ajax-get-or-ws-handshake request))
+    (POST "/chsk" request (ring-ajax-post                request))
+    #+END_SRC
+
+    #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
+    (let [{:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
+          (sente/make-channel-socket! {})]
+      (def ring-ajax-post                ajax-post-fn)
+      (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
+      (def ch-chsk                       ch-recv)
+      (def chsk-send!                    send-fn)
+      (def connected-uids                connected-uids))
+    #+END_SRC
+
+*** Middlewares
 
     Need to wrap the ring reload handler manually and restrict the directory to
     look for updates to the one of the backend. Otherwise I got exceptions
@@ -489,9 +514,14 @@
     Nicer than this would be using the option =:realod true= for the
     =serve-backend= task, but I could not restrict the directory when doing so.
     ;(
+
+    Both "params" middlewares are needed by the websocket library =sente=.
     #+BEGIN_SRC clojure :noweb-ref "backend service middlewares"
 
-    (def api (reload/wrap-reload api-handlers {:dirs ["src/clj/pva_parrot/backend"]}))
+    (def api (-> api-handlers
+               (reload/wrap-reload {:dirs ["src/clj/pva_parrot/backend"]})
+               (keyword-params/wrap-keyword-params)
+               (params/wrap-params)))
 
     #+END_SRC
 
@@ -506,6 +536,42 @@
               :httpkit true
               :port 3333)))
     #+END_SRC
+
+
+*** Client side websocket implementation
+
+  The custom URL function =chsk-url-fn= is a hack to make the client establish a
+  connection with the host on a different port.
+  I did not want to couple the backend service and the GUI by serving them from
+  the same web server instance.
+
+  So far I could not find a better way to achieve this with the =sente= API.
+  This also will fail when falling back to AJAX without handling CORS properly.
+  So far I will stick to this, should be enough for an MVP.
+
+  A more proper way to deal with this would be to use a reverse proxy and have
+  it point to the corresponding ports, based on a path.
+
+  #+BEGIN_SRC clojurescript :tangle ../src/cljs/pva_parrot/websockets.cljs
+  (ns pva-parrot.websockets
+    (:require-macros
+     [cljs.core.async.macros :as asyncm :refer (go go-loop)])
+    (:require [cljs.core.async :as async :refer (<! >! put! chan)]
+              [taoensso.sente :as sente :refer (cb-success?)]))
+
+  (defn chsk-url-fn [path {:as window-location :keys [protocol host pathname]} websocket?]
+      (str (if-not websocket? protocol (if (= protocol "https:") "wss:" "ws:"))
+           "//localhost:3333"  (or path pathname)))
+
+  (let [{:keys [chsk ch-recv send-fn state]}
+        (sente/make-channel-socket! "/chsk"
+          {:type :auto :chsk-url-fn chsk-url-fn})]
+
+    (def chsk chsk)
+    (def ch-chsk ch-recv)
+    (def chsk-send! send-fn)
+    (def chsk-state state))
+  #+END_SRC
 
 ** Libraries to be started
 

@@ -346,19 +346,6 @@
 * Libraries
 
   Libraries will be factored out and put into dedicated git repos later.
-
-** Calculations
-
-   Libraries for running calculations on data.
-
-** Project Handling
-
-   Libraries to manage and handle PVA projects and their resources. Includes version control and backup for projects.
-
-** I/O
-
-   Libraries for getting data in and out of the app. This includes for example file, database and web service access.
-
 ** Plotting
 
    Libraries for plotting data.
@@ -382,12 +369,31 @@
        {:component-did-mount plot}))
    #+END_SRC
 
-** Desktop App Shells
+** I/O
 
-   Libraries to run the app as a desktop application. Candidates for this are node-webkit and atom-shell.
+   Libraries for getting data in and out of the app. This includes for example file, database and web service access.
+   #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/import.cljs
 
-** Backend Service
+   #+END_SRC
 
-   Libraries handling the communication with a backend server, potentially could include the serice itself. A backend
-   server is especially imporant if the app is not build and used as a desktop application with a corresponding app
-   shell and thus not having access to file system etc.
+** Libraries to be started
+
+*** Calculations
+
+    Libraries for running calculations on data.
+
+*** Project Handling
+
+    Libraries to manage and handle PVA projects and their resources. Includes version control and backup for projects.
+
+*** Desktop App Shells
+
+    Libraries to run the app as a desktop application. Candidates for this are
+    node-webkit and atom-shell.
+
+*** Backend Service
+
+    Libraries handling the communication with a backend server, potentially could
+    include the serice itself. A backend server is especially imporant if the app
+    is not build and used as a desktop application with a corresponding app shell
+    and thus not having access to file system etc.

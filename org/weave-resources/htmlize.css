@@ -13,7 +13,7 @@ body {
 }
 
 pre.src {
-    font-size: large;
+    line-height: 1.5em;
     padding: 0.5em;
 }
 

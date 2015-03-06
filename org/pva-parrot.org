@@ -241,7 +241,9 @@
                 [reagent.core :as reagent :refer [atom]]))
 
     #+END_SRC
+
 *** State
+
     #+BEGIN_SRC clojure :noweb-ref "app state"
 
     (defonce app-state (atom {:heading "PVA Parrot"
@@ -249,16 +251,45 @@
                               :show-plot false}))
 
     #+END_SRC
+
 *** UI components
+
     #+BEGIN_SRC clojure :noweb-ref "app user interface components"
+    (defn styled-button [& opts]
+      (let [{:keys [style size click-handler contents]} opts
+            classes (clojure.string/join " " [(when style (str "btn-" style))
+                                              (when size  (str "btn-" size))])]
+        [:button.btn {:class classes
+                      :on-click click-handler}
+         contents]))
 
-    (defn pages-button [target text]
-      [:button.btn.btn-primary.btn-lg
-       {:on-click #(swap! app-state assoc :page target)}
-       text])
+    (defn swap-page [target]
+      (swap! app-state assoc :page target))
 
+    (defn pages-button [target text & opts]
+      (styled-button
+        :contents text
+        :style "primary"
+        :size "lg"
+        :click-handler #(swap-page target)))
+
+    (defn back-button [target]
+      (styled-button
+        :size "sm"
+        :contents "back"
+        :click-handler #(swap-page target)))
+
+    (defn import-file-button [text]
+      [:div
+       [:label "Import a file:"]
+       [:input.btn
+        {:name "import-file"
+         :type "file"
+         :accept "text/*"}]])
     #+END_SRC
+
 *** Pages
+
     #+BEGIN_SRC clojure :noweb-ref "app pages"
 
 
@@ -278,7 +309,9 @@
 
     (defn pca-page []
       [:div
-       [pages-button :welcome "Show Welcome Screen"]])
+       [back-button :welcome "Back to Welcome Screen"]
+       [import-file-button "Import CSV file"]
+       ])
 
     (defn page-component []
       (let [pages {:welcome [welcome-page]
@@ -287,6 +320,7 @@
         ((:page @app-state) pages)))
 
     #+END_SRC
+
 *** Init and entry point
     #+BEGIN_SRC clojure :noweb-ref "app initialization and entry point"
 
@@ -306,7 +340,8 @@
    (defstyles base
      [:* {:box-sizing "border-box"}]
      [:body
-      {:font-family "Helvetica Neue"
+      {:padding "10px"
+       :font-family "Helvetica Neue"
        :font-size   "16px"
        :line-height 1.5}])
    #+END_SRC

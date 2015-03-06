@@ -124,7 +124,10 @@
    #+END_SRC
 
    - sente :: socket and AJAX communication library, backend and frontend
+   - encore :: a depenendcy of =sente= and =timbre=, explicitly added to prevent
+        [[https://github.com/ptaoussanis/encore/blob/master/DEP-CONFLICT.md][dependency version conflicts]]
    #+BEGIN_SRC clojure
+   [com.taoensso/encore "1.21.0"]
    [com.taoensso/sente "1.3.0"]
    #+END_SRC
 
@@ -492,17 +495,19 @@
     [ring/ring-core "1.3.2"]
     [http-kit "2.1.19"]
     [compojure "1.3.1"]
+    [com.taoensso/timbre "3.4.0"]
     #+END_SRC
 
 *** Backend service implementation
 
     #+BEGIN_SRC clojure :noweb no-export :tangle ../src/clj/pva_parrot/backend/service.clj
     (ns pva-parrot.backend.service
-      (:require [ring.middleware.reload :as reload]
-                [ring.middleware.params :as params]
+      (:require [ring.middleware.reload         :as reload]
+                [ring.middleware.params         :as params]
                 [ring.middleware.keyword-params :as keyword-params]
-                [compojure.core :refer :all]
-                [taoensso.sente :as sente]))
+                [compojure.core                 :refer :all]
+                [taoensso.sente                 :as sente]
+                [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]))
 
     <<backend service websocket handlers>>
 
@@ -534,19 +539,23 @@
       (def connected-uids                connected-uids))
     #+END_SRC
 
-**** Event handling
-     Incoming events are handled by a multimethod wich dispatches on the =:id=
-     of the event.
+*** Event handling
+    Incoming events are handled by a multimethod wich dispatches on the =:id=
+    of the event.
 
-     #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
-     (defmulti event-msg-handler :id)
+    #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
+    (defmulti event-msg-handler :id)
 
-     (defmethod event-msg-handler :default
-       [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-       (println "Unhandled event: %s", event)
-       (when ?reply-fn
-         (?reply-fn {:unmatched-event-as-echoed-from-server event})))
-     #+END_SRC
+    (defmethod event-msg-handler :default
+      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+      (when ?reply-fn
+        (?reply-fn {:unmatched-event-as-echoed-from-server event})))
+
+    (defmethod event-msg-handler :pva-parrot/import-file
+      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}])
+
+    (sente/start-chsk-router! ch-chsk event-msg-handler)
+    #+END_SRC
 
 *** Middlewares
 

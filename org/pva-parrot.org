@@ -240,49 +240,84 @@
     #+END_SRC
 
 *** State
+    :PROPERTIES:
+    :noweb-ref: app state
+    :END:
 
-    #+BEGIN_SRC clojure :noweb-ref "app state"
+    Application state is kept in a single Reagent atom. Updating this atom
+    triggers propagates changes to the Reagent UI components using data from
+    this atom.
 
-    (defonce app-state (atom {:heading "PVA Parrot"
-                              :page :welcome
-                              :show-plot false}))
+    #+BEGIN_SRC clojure
+
+    (defonce app-state (atom {:page :welcome}))
 
     #+END_SRC
 
-*** UI components
+    App state consists of the following data:
 
-    #+BEGIN_SRC clojure :noweb-ref "app user interface components"
-    (defn styled-button [& opts]
-      (let [{:keys [style size click-handler contents]} opts
-            classes (clojure.string/join " " [(when style (str "btn-" style))
-                                              (when size  (str "btn-" size))])]
-        [:button.btn {:class classes
-                      :on-click click-handler}
-         contents]))
+    - :page :: the page currently active
+
+
+    -----
+    *Updating app state*
+
+    The current page can be changed with the =swap-page= function:
+
+    #+BEGIN_SRC clojure
 
     (defn swap-page [target]
       (swap! app-state assoc :page target))
 
+    #+END_SRC
+
+*** UI components
+    :PROPERTIES:
+    :noweb-ref: app user interface components
+    :END:
+
+    The generic =styled-button= function is a Reagent component to render a
+    button styled with twitter bootstrap css.
+
+    Based on this base button, further button components are declared to handle
+    specific use cases.
+
+    #+BEGIN_SRC clojure
+
+    (defn styled-button [& opts]
+      (let [{:keys [style size click-handler contents]} opts
+            classes (clojure.string/join " " [(when style (str "btn-" style))
+                                              (when size  (str "btn-" size))])]
+        [:button.btn {:class classes :on-click click-handler} contents]))
+
     (defn pages-button [target text & opts]
-      (styled-button
+      [styled-button
         :contents text
         :style "primary"
         :size "lg"
-        :click-handler #(swap-page target)))
+        :click-handler #(swap-page target)])
 
     (defn back-button [target]
-      (styled-button
+      [styled-button
         :size "sm"
         :contents "back"
-        :click-handler #(swap-page target)))
+        :click-handler #(swap-page target)])
 
-    (defn import-file-button [text]
-      [:div
+    #+END_SRC
+
+    Components to import files into the application. At the moment this is based
+    on uploading a file to the backend via HTML form submissions. When using a
+    desktop app shell, this might need to be changed.
+
+    #+BEGIN_SRC clojure
+    (defn file-input []
+      [:input.btn {:name "import-file" :type "file" :accept "text/*"}])
+
+    (defn submit-file-component [text]
+      [:form {:action "/file" :method "POST"}
        [:label "Import a file:"]
-       [:input.btn
-        {:name "import-file"
-         :type "file"
-         :accept "text/*"}]])
+       [file-input]
+       [styled-button :style "primary" :contents "Import file"]])
     #+END_SRC
 
 *** Pages
@@ -293,7 +328,7 @@
     (defn welcome-page []
       [:div.jumbotron
        [:img.img-responsive {:src "img/parrot.png"}]
-       [:h1 (:heading @app-state)]
+       [:h1 "PVA Parrot"]
        [:h2 "An application for polytopic vector analysis"]
        [:hr]
        [pages-button :plot "Show Example Plot"]
@@ -307,7 +342,7 @@
     (defn pca-page []
       [:div
        [back-button :welcome "Back to Welcome Screen"]
-       [import-file-button "Import CSV file"]
+       [submit-file-component "Import CSV file"]
        ])
 
     (defn page-component []
@@ -437,7 +472,7 @@
                 [taoensso.sente :as sente]))
 
     (defroutes api-handlers
-      (GET "/" [] "You found the xPVA Parrot backend service!"))
+      (GET "/" [] "You found the PVA Parrot backend service!"))
 
     <<backend service middlewares>>
 

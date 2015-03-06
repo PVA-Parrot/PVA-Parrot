@@ -221,46 +221,80 @@
 * GUI Application
 ** Application logic
 
-  The main namespace and entry point of the app.
+   Execute =boot dev= to access the application on http://localhost:3000.
 
-  Execute =boot dev= to access the application on http://localhost:3000.
+   The structure of the main application is like this:
+   #+BEGIN_SRC clojure :noweb no-export :tangle ../src/cljs/pva_parrot/app.cljs
+   <<app namespace>>
+   <<app state>>
+   <<app user interface components>>
+   <<app pages>>
+   <<app initialization and entry point>>
+   #+END_SRC
 
-  #+BEGIN_SRC clojure -r :tangle ../src/cljs/pva_parrot/app.cljs
-  (ns pva-parrot.app
-    (:require [pva-parrot.plot :as plot]
-              [reagent.core :as reagent :refer [atom]]))
+*** Namespace
+    The main namespace and entry point of the app.
+    #+BEGIN_SRC clojure :noweb-ref "app namespace"
 
-  (defonce app-state (atom {:heading "PVA Parrot"
-                            :page :welcome
-                            :show-plot false}))
+    (ns pva-parrot.app
+      (:require [pva-parrot.plot :as plot]
+                [reagent.core :as reagent :refer [atom]]))
 
-  (defn pages-button [target text]
-    [:button.btn.btn-primary.btn-lg
-     {:on-click #(swap! app-state assoc :page target)}
-     text])
+    #+END_SRC
+*** State
+    #+BEGIN_SRC clojure :noweb-ref "app state"
 
-  (defn welcome-page []
-    [:div.jumbotron
-     [:img.img-responsive {:src "img/parrot.png"}]
-     [:h1 (:heading @app-state)]
-     [:h2 "An application for polytopic vector analysis"]
-     [:hr]
-     [pages-button :plot "Show Example Plot"]])
+    (defonce app-state (atom {:heading "PVA Parrot"
+                              :page :welcome
+                              :show-plot false}))
 
-  (defn plot-page []
-    [:div
-     [plot/plot-component]
-     [pages-button :welcome "Show Welcome Screen"]])
+    #+END_SRC
+*** UI components
+    #+BEGIN_SRC clojure :noweb-ref "app user interface components"
 
-  (defn page-component []
-    (let [pages {:welcome [welcome-page]
-                  :plot [plot-page]}]
-      ((:page @app-state) pages)))
+    (defn pages-button [target text]
+      [:button.btn.btn-primary.btn-lg
+       {:on-click #(swap! app-state assoc :page target)}
+       text])
 
-  (defn init []
-    (reagent.core/render-component [page-component]
-      (js/document.getElementById "container")))
-  #+END_SRC
+    #+END_SRC
+*** Pages
+    #+BEGIN_SRC clojure :noweb-ref "app pages"
+
+
+    (defn welcome-page []
+      [:div.jumbotron
+       [:img.img-responsive {:src "img/parrot.png"}]
+       [:h1 (:heading @app-state)]
+       [:h2 "An application for polytopic vector analysis"]
+       [:hr]
+       [pages-button :plot "Show Example Plot"]
+       [pages-button :pca "PCA Example"]])
+
+    (defn plot-page []
+      [:div
+       [plot/plot-component]
+       [pages-button :welcome "Show Welcome Screen"]])
+
+    (defn pca-page []
+      [:div
+       [pages-button :welcome "Show Welcome Screen"]])
+
+    (defn page-component []
+      (let [pages {:welcome [welcome-page]
+                   :plot [plot-page]
+                   :pca [pca-page]}]
+        ((:page @app-state) pages)))
+
+    #+END_SRC
+*** Init and entry point
+    #+BEGIN_SRC clojure :noweb-ref "app initialization and entry point"
+
+    (defn init []
+      (reagent.core/render-component [page-component]
+        (js/document.getElementById "container")))
+
+    #+END_SRC
 
 ** CSS Styles
 

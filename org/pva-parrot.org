@@ -231,6 +231,7 @@
    <<app state>>
    <<app user interface components>>
    <<app pages>>
+   <<app event handling>>
    <<app initialization and entry point>>
    #+END_SRC
 
@@ -239,7 +240,8 @@
     #+BEGIN_SRC clojure :noweb-ref "app namespace"
 
     (ns pva-parrot.app
-      (:require [pva-parrot.plot :as plot]
+      (:require [taoensso.encore :as enc    :refer (tracef debugf infof warnf errorf)]
+                [pva-parrot.plot :as plot]
                 [pva-parrot.websockets :as websockets]
                 [reagent.core :as reagent :refer [atom]]))
 
@@ -257,7 +259,8 @@
     #+BEGIN_SRC clojure
 
     (defonce app-state (atom {:page :welcome
-                              :import-file nil}))
+                              :import-file nil
+                              :plot-data nil}))
 
     #+END_SRC
 
@@ -265,6 +268,8 @@
 
     - :page :: the page currently active
     - :import-file :: file to be imported/uploaded
+    - :plot-data :: data to be plotted, currently only a single plot is
+         supported and will use this data
 
     -----
     *Updating app state*
@@ -296,6 +301,23 @@
       [event]
       (let [file (aget event "target" "files" 0)]
         (store-text-file! file :import-file)))
+    #+END_SRC
+
+*** Event handling
+    :PROPERTIES:
+    :noweb-ref: app event handling
+    :END:
+
+    When getting PCA results from the backend, combine and transpose the data
+    and store it into =app-state :plot-data= from where =plot-component= will
+    retrieve it.
+    #+BEGIN_SRC clojure
+
+    (defmethod websockets/handle-event :pvaparrot/pca
+      [[_ data]]
+      (debugf "PCA data received: %s" data)
+      (swap! app-state assoc :plot-data (apply mapv vector [(:x1 data) (:x2 data)])))
+
     #+END_SRC
 
 *** UI components
@@ -338,7 +360,7 @@
 
     #+BEGIN_SRC clojure
     (defn file-input []
-      [:input.btn {:name "import-file" :type "file" :accept "text/*"
+      [:input.btn {:name "import-file" :type "file" :accept "text/csv"
                    :on-change import-file!}])
 
     (defn submit-file []
@@ -354,6 +376,7 @@
         :contents "Import file"
         :click-handler submit-file]])
     #+END_SRC
+
 
 *** Pages
 
@@ -371,7 +394,7 @@
 
     (defn plot-page []
       [:div
-       [plot/plot-component]
+       [plot/plot-component (:plot-data @app-state)]
        [pages-button :welcome "Show Welcome Screen"]])
 
     (defn pca-page []
@@ -453,23 +476,30 @@
    Libraries for plotting data.
 
   #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/plot.cljs
-   (ns pva-parrot.plot)
+   (ns pva-parrot.plot
+     (:require [reagent.core :as reagent]))
 
-   (defn- plot []
-     (let [data [{:label "foo"
-                  :points {:show true}
-                  :color "#E72510"
-                  :data (take 1000 (repeatedly (fn [_] [(rand 200) (rand 600)])))}]
-           plot-options {:grid {:hoverable true
-                                :clickable true}}]
-       (.plot js/$ "#placeholder" (clj->js data) (clj->js plot-options))))
+   (defn- plot
+     ([] (plot (take 1000 (repeatedly (fn [_] [(rand 200) (rand 600)])))))
+     ([plot-data]
+      (let [data [{:label "foo"
+                   :points {:show true}
+                   :color "#E72510"
+                   :data plot-data}]
+            plot-options {:grid {:hoverable true
+                                 :clickable true}}]
+        (.plot js/$ "#placeholder" (clj->js data) (clj->js plot-options)))))
 
-   (def plot-component
-     (with-meta
-       (fn []
-          [:div#placeholder {:style {:width "100%" :height "500px"}}])
-       {:component-did-mount plot}))
-   #+END_SRC
+   (defn plot-component
+     [data]
+     (reagent/create-class
+       {:component-did-mount (fn [_] (plot data))
+        :component-did-update (fn [_ _] (plot data))
+        :display-name "plot-component"
+        :reagent-render (fn [data]
+                          [:div#placeholder {:style {:width "100%"
+                                                     :height "500px"}}])}))
+  #+END_SRC
 
 ** I/O
 
@@ -484,9 +514,9 @@
    :END:
 
    Libraries handling the communication with a backend server, potentially could
-   include the service itself. A backend server is especially imporant if the app
-   is not build and used as a desktop application with a corresponding app shell
-   and thus not having access to file system etc.
+   include the service itself. A backend server is especially imporant if the
+   app is not build and used as a desktop application with a corresponding app
+   shell and thus not having access to file system etc.
 
    Using [[https://github.com/ptaoussanis/sente][sente]] for asynchronous, realtime communication.
 
@@ -496,6 +526,7 @@
     [http-kit "2.1.19"]
     [compojure "1.3.1"]
     [com.taoensso/timbre "3.4.0"]
+    [org.clojure/data.csv "0.1.2"]
     #+END_SRC
 
 *** Backend service implementation
@@ -507,7 +538,9 @@
                 [ring.middleware.keyword-params :as keyword-params]
                 [compojure.core                 :refer :all]
                 [taoensso.sente                 :as sente]
-                [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]))
+                [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]
+                [clojure.data.csv               :as csv]
+                [pva-parrot.calc.pca            :as pca]))
 
     <<backend service websocket handlers>>
 
@@ -539,24 +572,6 @@
       (def connected-uids                connected-uids))
     #+END_SRC
 
-*** Event handling
-    Incoming events are handled by a multimethod wich dispatches on the =:id=
-    of the event.
-
-    #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
-    (defmulti event-msg-handler :id)
-
-    (defmethod event-msg-handler :default
-      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-      (when ?reply-fn
-        (?reply-fn {:unmatched-event-as-echoed-from-server event})))
-
-    (defmethod event-msg-handler :pva-parrot/import-file
-      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}])
-
-    (sente/start-chsk-router! ch-chsk event-msg-handler)
-    #+END_SRC
-
 *** Middlewares
 
     Need to wrap the ring reload handler manually and restrict the directory to
@@ -581,6 +596,55 @@
 
     #+END_SRC
 
+*** Calculations
+    #+BEGIN_SRC clojure :noweb-ref "boot dependencies"
+    [incanter "1.5.6"]
+    #+END_SRC
+
+    Libraries for running calculations on data.
+    #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/calc/pca.clj
+    (ns pva-parrot.calc.pca
+      (:require [incanter.core :refer :all]
+                [incanter.stats :refer :all]))
+
+    (defn components [data]
+      (let [mat (to-matrix (to-dataset data))
+            x (sel mat :cols (range 4))
+            species (sel mat :cols 4)
+            pca-data (principal-components x)
+            components (:rotation pca-data)
+            pc1 (sel components :cols 0)
+            pc2 (sel components :cols 1)]
+        {:x1 (to-vect (mmult x pc1))
+         :x2 (to-vect (mmult x pc2))}))
+    #+END_SRC
+
+*** Event handling
+    Incoming events are handled by a multimethod wich dispatches on the =:id=
+    of the event.
+
+    #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
+    (defmulti event-msg-handler :id)
+
+    (defmethod event-msg-handler :default
+      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+      (when ?reply-fn
+        (?reply-fn {:unmatched-event-as-echoed-from-server event})))
+
+    (defmethod event-msg-handler :pva-parrot/import-file
+      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+      (when ?data
+        (let [session   (:session ring-req)
+              uid       (:uid session)
+              raw-data  (csv/read-csv (:file-body ?data))
+              pca-data  (pva-parrot.calc.pca/components raw-data)
+              reply-msg [:pvaparrot/pca pca-data]]
+          (chsk-send! uid reply-msg))))
+
+    (sente/start-chsk-router! ch-chsk event-msg-handler)
+
+    #+END_SRC
+
 *** Boot tasks for backend service
     Start the backend server and the GUI client via =boot serve-backend dev=
 
@@ -593,47 +657,77 @@
               :port 3333)))
     #+END_SRC
 
+** Client side websocket implementation
 
-*** Client side websocket implementation
+ The custom URL function =chsk-url-fn= is a hack to make the client establish a
+ connection with the host on a different port.
+ I did not want to couple the backend service and the GUI by serving them from
+ the same web server instance.
 
-  The custom URL function =chsk-url-fn= is a hack to make the client establish a
-  connection with the host on a different port.
-  I did not want to couple the backend service and the GUI by serving them from
-  the same web server instance.
+ So far I could not find a better way to achieve this with the =sente= API.
+ This also will fail when falling back to AJAX without handling CORS properly.
+ So far I will stick to this, should be enough for an MVP.
 
-  So far I could not find a better way to achieve this with the =sente= API.
-  This also will fail when falling back to AJAX without handling CORS properly.
-  So far I will stick to this, should be enough for an MVP.
+ A more proper way to deal with this would be to use a reverse proxy and have
+ it point to the corresponding ports, based on a path.
 
-  A more proper way to deal with this would be to use a reverse proxy and have
-  it point to the corresponding ports, based on a path.
+ #+BEGIN_SRC clojurescript :noweb no-export :tangle ../src/cljs/pva_parrot/websockets.cljs
+ (ns pva-parrot.websockets
+   (:require-macros
+    [cljs.core.async.macros :as asyncm :refer (go go-loop)])
+   (:require [cljs.core.async :as async :refer (<! >! put! chan)]
+             [taoensso.encore :as enc    :refer (tracef debugf infof warnf errorf)]
+             [taoensso.sente :as sente :refer (cb-success?)]))
 
-  #+BEGIN_SRC clojurescript :tangle ../src/cljs/pva_parrot/websockets.cljs
-  (ns pva-parrot.websockets
-    (:require-macros
-     [cljs.core.async.macros :as asyncm :refer (go go-loop)])
-    (:require [cljs.core.async :as async :refer (<! >! put! chan)]
-              [taoensso.sente :as sente :refer (cb-success?)]))
+ (defn chsk-url-fn [path {:as window-location :keys [protocol host pathname]} websocket?]
+     (str (if-not websocket? protocol (if (= protocol "https:") "wss:" "ws:"))
+          "//localhost:3333"  (or path pathname)))
 
-  (defn chsk-url-fn [path {:as window-location :keys [protocol host pathname]} websocket?]
-      (str (if-not websocket? protocol (if (= protocol "https:") "wss:" "ws:"))
-           "//localhost:3333"  (or path pathname)))
+ (let [{:keys [chsk ch-recv send-fn state]}
+       (sente/make-channel-socket! "/chsk"
+         {:type :auto :chsk-url-fn chsk-url-fn})]
 
-  (let [{:keys [chsk ch-recv send-fn state]}
-        (sente/make-channel-socket! "/chsk"
-          {:type :auto :chsk-url-fn chsk-url-fn})]
+   (def chsk       chsk)
+   (def ch-chsk    ch-recv)
+   (def chsk-send! send-fn)
+   (def chsk-state state))
 
-    (def chsk chsk)
-    (def ch-chsk ch-recv)
-    (def chsk-send! send-fn)
-    (def chsk-state state))
-  #+END_SRC
+ <<app websockets event handling>>
+ #+END_SRC
+
+*** Websocket Event handling
+    :PROPERTIES:
+    :noweb-ref: app websockets event handling
+    :END:
+    #+BEGIN_SRC clojure
+    (defmulti handle-event (fn [[event-id event-message]] event-id))
+
+    (defmulti event-msg-handler :id)
+
+    (defmethod event-msg-handler :default
+      [{:as ev-msg :keys [event]}]
+      (debugf "Unhandled event: %s" event))
+
+    (defmethod event-msg-handler :chsk/state
+      [{:as ev-msg :keys [?data]}]
+      (if (= ?data {:first-open? true})
+        (debugf "Channel socket successfully established!")
+        (debugf "Channel socket state change: %s" ?data)))
+
+    (defmethod event-msg-handler :chsk/recv
+      [{:as ev-msg :keys [?data]}]
+      (debugf "Push event from server: %s" ?data)
+      (handle-event ?data))
+
+    (defmethod event-msg-handler :chsk/handshake
+      [{:as ev-msg :keys [?data]}]
+      (let [[?uid ?csrf-token ?handshake-data] ?data]
+        (debugf "Handshake: %s" ?data)))
+
+    (sente/start-chsk-router! ch-chsk event-msg-handler)
+    #+END_SRC
 
 ** Libraries to be started
-
-*** Calculations
-
-    Libraries for running calculations on data.
 
 *** Project Handling
 

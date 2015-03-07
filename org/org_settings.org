@@ -1,0 +1,5 @@
+#+STARTUP: align lognotestate
+
+#+TODO: CHORE(c!) BUG(b!) IDEA(i!) | FIXED(f!)
+
+#+PROPERTY: mkdirp yes

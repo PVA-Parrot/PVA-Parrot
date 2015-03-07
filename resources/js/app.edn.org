@@ -1,0 +1,8 @@
+#+INCLUDE: "~/git_repos/PVA-parrot/PVA-Parrot/org/org_settings.org"
+
+* JS entry point
+
+  #+BEGIN_SRC clojure :tangle app.cljs.edn
+  {:require  [pva-parrot.app]
+   :init-fns [pva-parrot.app/init]}
+  #+END_SRC

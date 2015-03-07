@@ -1,26 +1,6 @@
-#+TITLE: PVA-Parrot: An application for polytopic vector analysis
-#+AUTHOR: Nils Blum-Oeste
-#+EMAIL: nils@blum-oeste.de
-#+LANGUAGE: en
-#+STARTUP: align lognotestate
-#+INFOJS_OPT: view:info toc:t
-#+HTML_DOCTYPE: html5
-#+HTML_CONTAINER_CLASS: container
-#+HTML_HEAD: <script src="http://code.jquery.com/jquery-2.1.3.min.js"></script>
-#+HTML_HEAD: <script src="http://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/highlight.min.js"></script>
-#+HTML_HEAD: <script src="http://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/languages/clojure.min.js"></script>
-#+HTML_HEAD: <script src="http://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/languages/bash.min.js"></script>
-#+HTML_HEAD: <script src="weave-resources/export.js"></script>
-#+HTML_HEAD: <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/monokai.min.css">
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css" />
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="weave-resources/htmlize.css" />
+#+INCLUDE: "~/git_repos/PVA-parrot/PVA-Parrot/org/org_settings.org"
 
-#+OPTIONS: html-link-use-abs-url:nil html-postamble:nil html-preamble:t html-scripts:t html-style:nil html5-fancy:t
-#+OPTIONS: tex:t
-
-#+PROPERTY: mkdirp yes
-
-* TODO org file needs to be split, gets way too slow
+#+INCLUDE: "~/git_repos/PVA-parrot/PVA-Parrot/org/org_settings_weave.org"
 
 * Introduction
   PVA-Parrot is an application for doing polytopic vector analysis. This is the
@@ -131,6 +111,22 @@
    [com.taoensso/sente "1.3.0"]
    #+END_SRC
 
+**** Backend dependencies
+     #+BEGIN_SRC clojure
+     [ring/ring-core "1.3.2"]
+     [http-kit "2.1.19"]
+     [compojure "1.3.1"]
+     [com.taoensso/timbre "3.4.0"]
+     [org.clojure/data.csv "0.1.2"]
+     #+END_SRC
+
+     Backend calculations are using Incanter. Using the latest stabel version 1.5.6
+     for now.
+     #+BEGIN_SRC clojure
+     [incanter "1.5.6"]
+     #+END_SRC
+
+
 *** Tasks definitions
     :PROPERTIES:
     :noweb-ref: boot tasks
@@ -192,6 +188,20 @@
         (dev-run)))
     #+END_SRC
 
+**** Boot tasks for backend service
+
+     Start the backend server and the GUI client via =boot serve-backend dev=
+
+     boot task to start the backend server:
+     #+BEGIN_SRC clojure
+         (deftask serve-backend []
+           (comp
+             (serve :handler 'pva-parrot.backend.service/api
+               :httpkit true
+               :port 3333)))
+     #+END_SRC
+
+ #
 *** Tasks options
     :PROPERTIES:
     :noweb-ref: boot tasks options
@@ -206,7 +216,6 @@
          :description <<description>>}
     #+END_SRC
 
-*** TODO use CLJSJS
 ** Troubleshooting
 *** JVM Config and Java 8
 
@@ -221,511 +230,26 @@
     recomment using Java 8.
 
 * GUI Application
-** Application logic
 
-   Execute =boot dev= to access the application on http://localhost:3000.
+#+INCLUDE: "../src/cljs/pva_parrot/app.org"
 
-   The structure of the main application is like this:
-   #+BEGIN_SRC clojure :noweb no-export :tangle ../src/cljs/pva_parrot/app.cljs
-   <<app namespace>>
-   <<app state>>
-   <<app user interface components>>
-   <<app pages>>
-   <<app event handling>>
-   <<app initialization and entry point>>
-   #+END_SRC
+#+INCLUDE: "../resources/index.org"
 
-*** Namespace
-    The main namespace and entry point of the app.
-    #+BEGIN_SRC clojure :noweb-ref "app namespace"
+#+INCLUDE: "../resources/js/app.edn.org"
 
-    (ns pva-parrot.app
-      (:require [taoensso.encore :as enc    :refer (tracef debugf infof warnf errorf)]
-                [pva-parrot.plot :as plot]
-                [pva-parrot.websockets :as websockets]
-                [reagent.core :as reagent :refer [atom]]))
-
-    #+END_SRC
-
-*** State
-    :PROPERTIES:
-    :noweb-ref: app state
-    :END:
-
-    Application state is kept in a single Reagent atom. Updating this atom
-    triggers propagates changes to the Reagent UI components using data from
-    this atom.
-
-    #+BEGIN_SRC clojure
-
-    (defonce app-state (atom {:page :welcome
-                              :import-file nil
-                              :plot-data nil}))
-
-    #+END_SRC
-
-    App state consists of the following data:
-
-    - :page :: the page currently active
-    - :import-file :: file to be imported/uploaded
-    - :plot-data :: data to be plotted, currently only a single plot is
-         supported and will use this data
-
-    -----
-    *Updating app state*
-
-    The current page can be changed with the =swap-page= function:
-
-    #+BEGIN_SRC clojure
-
-    (defn swap-page [target]
-      (swap! app-state assoc :page target))
-
-    #+END_SRC
-
-    To import text files, they get stored in in the =app-state= atom. The HTML5
-    =FileReader= gets used to retrieve the file contents.
-
-    #+BEGIN_SRC clojure
-    (defn store-text-file!
-      "Reads a file as text and swaps the result into the app-state for the given key."
-      [file key]
-      (let [reader (js/FileReader.)]
-        (set! (.-onload reader)
-          (fn [event]
-            (let [file-content (aget event "target" "result")]
-              (swap! app-state assoc key file-content))))
-        (.readAsText reader file)))
-
-    (defn import-file!
-      [event]
-      (let [file (aget event "target" "files" 0)]
-        (store-text-file! file :import-file)))
-    #+END_SRC
-
-*** Event handling
-    :PROPERTIES:
-    :noweb-ref: app event handling
-    :END:
-
-    When getting PCA results from the backend, combine and transpose the data
-    and store it into =app-state :plot-data= from where =plot-component= will
-    retrieve it.
-    #+BEGIN_SRC clojure
-
-    (defmethod websockets/handle-event :pvaparrot/pca
-      [[_ data]]
-      (debugf "PCA data received: %s" data)
-      (swap! app-state assoc :plot-data (apply mapv vector [(:x1 data) (:x2 data)])))
-
-    #+END_SRC
-
-*** UI components
-    :PROPERTIES:
-    :noweb-ref: app user interface components
-    :END:
-
-    The generic =styled-button= function is a Reagent component to render a
-    button styled with twitter bootstrap css.
-
-    Based on this base button, further button components are declared to handle
-    specific use cases.
-
-    #+BEGIN_SRC clojure
-
-    (defn styled-button [& opts]
-      (let [{:keys [style size click-handler contents]} opts
-            classes (clojure.string/join " " [(when style (str "btn-" style))
-                                              (when size  (str "btn-" size))])]
-        [:button.btn {:class classes :on-click click-handler} contents]))
-
-    (defn pages-button [target text & opts]
-      [styled-button
-        :contents text
-        :style "primary"
-        :size "lg"
-        :click-handler #(swap-page target)])
-
-    (defn back-button [target]
-      [styled-button
-        :size "sm"
-        :contents "back"
-        :click-handler #(swap-page target)])
-
-    #+END_SRC
-
-    Components to import files into the application. At the moment this is based
-    on uploading a file to the backend via HTML form submissions. When using a
-    desktop app shell, this might need to be changed.
-
-    #+BEGIN_SRC clojure
-    (defn file-input []
-      [:input.btn {:name "import-file" :type "file" :accept "text/csv"
-                   :on-change import-file!}])
-
-    (defn submit-file []
-      (let [file-body (:import-file @app-state)
-            event-data {:file-body file-body}]
-        (websockets/chsk-send! [:pva-parrot/import-file event-data])))
-
-    (defn submit-file-component [text]
-      [:div
-       [:p "Import a file:"]
-       [file-input]
-       [styled-button :style "primary"
-        :contents "Import file"
-        :click-handler submit-file]])
-    #+END_SRC
-
-
-*** Pages
-
-    #+BEGIN_SRC clojure :noweb-ref "app pages"
-
-
-    (defn welcome-page []
-      [:div.jumbotron
-       [:img.img-responsive {:src "img/parrot.png"}]
-       [:h1 "PVA Parrot"]
-       [:h2 "An application for polytopic vector analysis"]
-       [:hr]
-       [pages-button :plot "Show Example Plot"]
-       [pages-button :pca "PCA Example"]])
-
-    (defn plot-page []
-      [:div
-       [plot/plot-component (:plot-data @app-state)]
-       [pages-button :welcome "Show Welcome Screen"]])
-
-    (defn pca-page []
-      [:div
-       [back-button :welcome "Back to Welcome Screen"]
-       [submit-file-component "Import CSV file"]
-       ])
-
-    (defn page-component []
-      (let [pages {:welcome [welcome-page]
-                   :plot [plot-page]
-                   :pca [pca-page]}]
-        ((:page @app-state) pages)))
-
-    #+END_SRC
-
-*** Init and entry point
-    #+BEGIN_SRC clojure :noweb-ref "app initialization and entry point"
-
-    (defn init []
-      (reagent.core/render-component [page-component]
-        (js/document.getElementById "container")))
-
-    #+END_SRC
-
-** CSS Styles
-
-   #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/styles.clj
-   (ns pva-parrot.styles
-     (:require [garden.def :refer [defrule defstyles]]
-               [garden.stylesheet :refer [rule]]))
-
-   (defstyles base
-     [:* {:box-sizing "border-box"}]
-     [:body
-      {:padding "10px"
-       :font-family "Helvetica Neue"
-       :font-size   "16px"
-       :line-height 1.5}])
-   #+END_SRC
-
-** HTML entry point
-   #+BEGIN_SRC html :tangle ../resources/index.html
-   <!doctype html>
-   <html>
-     <head>
-       <meta charset="utf-8">
-       <title>PVA Parrot</title>
-       <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css" media="screen">
-       <link href="css/garden.css" rel="stylesheet" type="text/css" media="screen">
-     </head>
-     <body>
-       <div id="container" class="container">
-         <!-- loading screen -->
-         <div class="jumbotron">
-           <img src="img/parrot.png"  class="img-responsive" />
-           <h3>PVA Parrot loading...</h3>
-           <p>Initializing application, please wait...</p>
-         </div>
-       </div>
-       <script type="text/javascript" src="js/app.js"></script>
-       <script type="text/javascript" src="vendor/jquery.min.js"></script>
-       <script type="text/javascript" src="vendor/jquery.flot.min.js"></script>
-     </body>
-   </html>
-   #+END_SRC
-
-** JS entry point
-   #+BEGIN_SRC clojure :tangle ../resources/js/app.cljs.edn
-   {:require  [pva-parrot.app]
-    :init-fns [pva-parrot.app/init]}
-   #+END_SRC
+#+INCLUDE: "../src/clj/pva_parrot/styles.org"
 
 * Libraries
 
   Libraries will be factored out and put into dedicated git repos later.
-** Plotting
 
-   Libraries for plotting data.
+#+INCLUDE: "../src/cljs/pva_parrot/plot.org"
 
-  #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/plot.cljs
-   (ns pva-parrot.plot
-     (:require [reagent.core :as reagent]))
+#+INCLUDE: "../src/cljs/pva_parrot/websockets.org"
 
-   (defn- plot
-     ([] (plot (take 1000 (repeatedly (fn [_] [(rand 200) (rand 600)])))))
-     ([plot-data]
-      (let [data [{:label "foo"
-                   :points {:show true}
-                   :color "#E72510"
-                   :data plot-data}]
-            plot-options {:grid {:hoverable true
-                                 :clickable true}}]
-        (.plot js/$ "#placeholder" (clj->js data) (clj->js plot-options)))))
+#+INCLUDE: "../src/clj/pva_parrot/backend/service.org"
 
-   (defn plot-component
-     [data]
-     (reagent/create-class
-       {:component-did-mount (fn [_] (plot data))
-        :component-did-update (fn [_ _] (plot data))
-        :display-name "plot-component"
-        :reagent-render (fn [data]
-                          [:div#placeholder {:style {:width "100%"
-                                                     :height "500px"}}])}))
-  #+END_SRC
-
-** I/O
-
-   Libraries for getting data in and out of the app. This includes for example file, database and web service access.
-   #+BEGIN_SRC clojure :tangle ../src/cljs/pva_parrot/import.cljs
-
-   #+END_SRC
-
-** Backend Service
-   :PROPERTIES:
-   :CUSTOM_ID: libs-backend
-   :END:
-
-   Libraries handling the communication with a backend server, potentially could
-   include the service itself. A backend server is especially imporant if the
-   app is not build and used as a desktop application with a corresponding app
-   shell and thus not having access to file system etc.
-
-   Using [[https://github.com/ptaoussanis/sente][sente]] for asynchronous, realtime communication.
-
-*** Backend dependencies
-    #+BEGIN_SRC clojure :noweb-ref "boot dependencies"
-    [ring/ring-core "1.3.2"]
-    [http-kit "2.1.19"]
-    [compojure "1.3.1"]
-    [com.taoensso/timbre "3.4.0"]
-    [org.clojure/data.csv "0.1.2"]
-    #+END_SRC
-
-*** Backend service implementation
-
-    #+BEGIN_SRC clojure :noweb no-export :tangle ../src/clj/pva_parrot/backend/service.clj
-    (ns pva-parrot.backend.service
-      (:require [ring.middleware.reload         :as reload]
-                [ring.middleware.params         :as params]
-                [ring.middleware.keyword-params :as keyword-params]
-                [compojure.core                 :refer :all]
-                [taoensso.sente                 :as sente]
-                [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]
-                [clojure.data.csv               :as csv]
-                [pva-parrot.calc.pca            :as pca]))
-
-    <<backend service websocket handlers>>
-
-    (defroutes api-handlers
-      (GET "/" [] "You found the PVA Parrot backend service!")
-      <<backend service websocket routes>>
-      )
-
-    <<backend service middlewares>>
-
-    #+END_SRC
-
-*** Websockets
-
-    Websocket related routes:
-    #+BEGIN_SRC clojure :noweb-ref "backend service websocket routes"
-    (GET  "/chsk" request (ring-ajax-get-or-ws-handshake request))
-    (POST "/chsk" request (ring-ajax-post                request))
-    #+END_SRC
-
-    Set up the server side websocket communication handlers:
-    #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
-    (let [{:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
-          (sente/make-channel-socket! {})]
-      (def ring-ajax-post                ajax-post-fn)
-      (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
-      (def ch-chsk                       ch-recv)
-      (def chsk-send!                    send-fn)
-      (def connected-uids                connected-uids))
-    #+END_SRC
-
-*** Middlewares
-
-    Need to wrap the ring reload handler manually and restrict the directory to
-    look for updates to the one of the backend. Otherwise I got exceptions
-    because it was also trying to compile the =styles.clj= file and could not
-    find the =garden= dependency then.
-    With the current workaround one also needs to reload the page twice to see
-    the latest changes.
-    Not sure why this did happen.
-
-    Nicer than this would be using the option =:realod true= for the
-    =serve-backend= task, but I could not restrict the directory when doing so.
-    ;(
-
-    Both "params" middlewares are needed by the websocket library =sente=.
-    #+BEGIN_SRC clojure :noweb-ref "backend service middlewares"
-
-    (def api (-> api-handlers
-               (reload/wrap-reload {:dirs ["src/clj/pva_parrot/backend"]})
-               (keyword-params/wrap-keyword-params)
-               (params/wrap-params)))
-
-    #+END_SRC
-
-*** Calculations
-    #+BEGIN_SRC clojure :noweb-ref "boot dependencies"
-    [incanter "1.5.6"]
-    #+END_SRC
-
-    Libraries for running calculations on data.
-    #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/calc/pca.clj
-    (ns pva-parrot.calc.pca
-      (:require [incanter.core :refer :all]
-                [incanter.stats :refer :all]))
-
-    (defn components [data]
-      (let [mat (to-matrix (to-dataset data))
-            x (sel mat :cols (range 4))
-            species (sel mat :cols 4)
-            pca-data (principal-components x)
-            components (:rotation pca-data)
-            pc1 (sel components :cols 0)
-            pc2 (sel components :cols 1)]
-        {:x1 (to-vect (mmult x pc1))
-         :x2 (to-vect (mmult x pc2))}))
-    #+END_SRC
-
-*** Event handling
-    Incoming events are handled by a multimethod wich dispatches on the =:id=
-    of the event.
-
-    #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
-    (defmulti event-msg-handler :id)
-
-    (defmethod event-msg-handler :default
-      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-      (when ?reply-fn
-        (?reply-fn {:unmatched-event-as-echoed-from-server event})))
-
-    (defmethod event-msg-handler :pva-parrot/import-file
-      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-      (when ?data
-        (let [session   (:session ring-req)
-              uid       (:uid session)
-              raw-data  (csv/read-csv (:file-body ?data))
-              pca-data  (pva-parrot.calc.pca/components raw-data)
-              reply-msg [:pvaparrot/pca pca-data]]
-          (chsk-send! uid reply-msg))))
-
-    (sente/start-chsk-router! ch-chsk event-msg-handler)
-
-    #+END_SRC
-
-*** Boot tasks for backend service
-    Start the backend server and the GUI client via =boot serve-backend dev=
-
-    boot task to start the backend server:
-    #+BEGIN_SRC clojure :noweb-ref "boot tasks"
-        (deftask serve-backend []
-          (comp
-            (serve :handler 'pva-parrot.backend.service/api
-              :httpkit true
-              :port 3333)))
-    #+END_SRC
-
-** Client side websocket implementation
-
- The custom URL function =chsk-url-fn= is a hack to make the client establish a
- connection with the host on a different port.
- I did not want to couple the backend service and the GUI by serving them from
- the same web server instance.
-
- So far I could not find a better way to achieve this with the =sente= API.
- This also will fail when falling back to AJAX without handling CORS properly.
- So far I will stick to this, should be enough for an MVP.
-
- A more proper way to deal with this would be to use a reverse proxy and have
- it point to the corresponding ports, based on a path.
-
- #+BEGIN_SRC clojurescript :noweb no-export :tangle ../src/cljs/pva_parrot/websockets.cljs
- (ns pva-parrot.websockets
-   (:require-macros
-    [cljs.core.async.macros :as asyncm :refer (go go-loop)])
-   (:require [cljs.core.async :as async :refer (<! >! put! chan)]
-             [taoensso.encore :as enc    :refer (tracef debugf infof warnf errorf)]
-             [taoensso.sente :as sente :refer (cb-success?)]))
-
- (defn chsk-url-fn [path {:as window-location :keys [protocol host pathname]} websocket?]
-     (str (if-not websocket? protocol (if (= protocol "https:") "wss:" "ws:"))
-          "//localhost:3333"  (or path pathname)))
-
- (let [{:keys [chsk ch-recv send-fn state]}
-       (sente/make-channel-socket! "/chsk"
-         {:type :auto :chsk-url-fn chsk-url-fn})]
-
-   (def chsk       chsk)
-   (def ch-chsk    ch-recv)
-   (def chsk-send! send-fn)
-   (def chsk-state state))
-
- <<app websockets event handling>>
- #+END_SRC
-
-*** Websocket Event handling
-    :PROPERTIES:
-    :noweb-ref: app websockets event handling
-    :END:
-    #+BEGIN_SRC clojure
-    (defmulti handle-event (fn [[event-id event-message]] event-id))
-
-    (defmulti event-msg-handler :id)
-
-    (defmethod event-msg-handler :default
-      [{:as ev-msg :keys [event]}]
-      (debugf "Unhandled event: %s" event))
-
-    (defmethod event-msg-handler :chsk/state
-      [{:as ev-msg :keys [?data]}]
-      (if (= ?data {:first-open? true})
-        (debugf "Channel socket successfully established!")
-        (debugf "Channel socket state change: %s" ?data)))
-
-    (defmethod event-msg-handler :chsk/recv
-      [{:as ev-msg :keys [?data]}]
-      (debugf "Push event from server: %s" ?data)
-      (handle-event ?data))
-
-    (defmethod event-msg-handler :chsk/handshake
-      [{:as ev-msg :keys [?data]}]
-      (let [[?uid ?csrf-token ?handshake-data] ?data]
-        (debugf "Handshake: %s" ?data)))
-
-    (sente/start-chsk-router! ch-chsk event-msg-handler)
-    #+END_SRC
+#+INCLUDE: "../src/clj/pva_parrot/calc/pca.org"
 
 ** Libraries to be started
 
@@ -737,3 +261,25 @@
 
     Libraries to run the app as a desktop application. Candidates for this are
     node-webkit and atom-shell.
+
+*** I/O
+
+    Libraries for getting data in and out of the app. This includes for example
+    file, database and web service access.
+
+* Todos
+** CHORE TODO org file needs to be split, gets way too slow
+   :LOGBOOK:
+   - State "CHORE"      from ""           [2015-03-07 Sat 11:44]
+   :END:
+   <2015-03-07 Sat>
+** CHORE TODO it's about time to start adding tests I guess
+   :LOGBOOK:
+   - State "CHORE"      from ""           [2015-03-07 Sat 11:44]
+   :END:
+   <2015-03-07 Sat>
+
+** IDEA TODO use CLJSJS
+   :LOGBOOK:
+   - State "IDEA"       from ""           [2015-03-07 Sat 17:34]
+   :END:

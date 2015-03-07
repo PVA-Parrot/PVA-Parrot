@@ -1,0 +1,31 @@
+#+INCLUDE: "~/git_repos/PVA-parrot/PVA-Parrot/org/org_settings.org"
+
+* Plotting
+
+  Libraries for plotting data.
+
+ #+BEGIN_SRC clojure :tangle plot.cljs
+  (ns pva-parrot.plot
+    (:require [reagent.core :as reagent]))
+
+  (defn- plot
+    ([] (plot (take 1000 (repeatedly (fn [_] [(rand 200) (rand 600)])))))
+    ([plot-data]
+     (let [data [{:label "foo"
+                  :points {:show true}
+                  :color "#E72510"
+                  :data plot-data}]
+           plot-options {:grid {:hoverable true
+                                :clickable true}}]
+       (.plot js/$ "#placeholder" (clj->js data) (clj->js plot-options)))))
+
+  (defn plot-component
+    [data]
+    (reagent/create-class
+      {:component-did-mount (fn [_] (plot data))
+       :component-did-update (fn [_ _] (plot data))
+       :display-name "plot-component"
+       :reagent-render (fn [data]
+                         [:div#placeholder {:style {:width "100%"
+                                                    :height "500px"}}])}))
+ #+END_SRC

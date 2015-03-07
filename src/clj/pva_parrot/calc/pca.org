@@ -1,0 +1,20 @@
+#+INCLUDE: "~/git_repos/PVA-parrot/PVA-Parrot/org/org_settings.org"
+
+* Calculations
+  Libraries for running calculations on data.
+  #+BEGIN_SRC clojure :tangle yes
+  (ns pva-parrot.calc.pca
+    (:require [incanter.core :refer :all]
+              [incanter.stats :refer :all]))
+
+  (defn components [data]
+    (let [mat (to-matrix (to-dataset data))
+          x (sel mat :cols (range 4))
+          species (sel mat :cols 4)
+          pca-data (principal-components x)
+          components (:rotation pca-data)
+          pc1 (sel components :cols 0)
+          pc2 (sel components :cols 1)]
+      {:x1 (to-vect (mmult x pc1))
+       :x2 (to-vect (mmult x pc2))}))
+  #+END_SRC

@@ -1,0 +1,106 @@
+#+INCLUDE: "~/git_repos/PVA-parrot/PVA-Parrot/org/org_settings.org"
+
+* Backend Service
+  :PROPERTIES:
+  :CUSTOM_ID: libs-backend
+  :END:
+
+  Libraries handling the communication with a backend server, potentially could
+  include the service itself. A backend server is especially imporant if the
+  app is not build and used as a desktop application with a corresponding app
+  shell and thus not having access to file system etc.
+
+  Using [[https://github.com/ptaoussanis/sente][sente]] for asynchronous, realtime communication.
+
+*** Backend service implementation
+
+    #+BEGIN_SRC clojure :noweb no-export :tangle yes
+    (ns pva-parrot.backend.service
+      (:require [ring.middleware.reload         :as reload]
+                [ring.middleware.params         :as params]
+                [ring.middleware.keyword-params :as keyword-params]
+                [compojure.core                 :refer :all]
+                [taoensso.sente                 :as sente]
+                [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]
+                [clojure.data.csv               :as csv]
+                [pva-parrot.calc.pca            :as pca]))
+
+    <<backend service websocket handlers>>
+
+    (defroutes api-handlers
+      (GET "/" [] "You found the PVA Parrot backend service!")
+      <<backend service websocket routes>>
+      )
+
+    <<backend service middlewares>>
+
+    #+END_SRC
+
+*** Websockets
+
+    Websocket related routes:
+    #+BEGIN_SRC clojure :noweb-ref "backend service websocket routes"
+    (GET  "/chsk" request (ring-ajax-get-or-ws-handshake request))
+    (POST "/chsk" request (ring-ajax-post                request))
+    #+END_SRC
+
+    Set up the server side websocket communication handlers:
+    #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
+    (let [{:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
+          (sente/make-channel-socket! {})]
+      (def ring-ajax-post                ajax-post-fn)
+      (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
+      (def ch-chsk                       ch-recv)
+      (def chsk-send!                    send-fn)
+      (def connected-uids                connected-uids))
+    #+END_SRC
+
+*** Middlewares
+
+    Need to wrap the ring reload handler manually and restrict the directory to
+    look for updates to the one of the backend. Otherwise I got exceptions
+    because it was also trying to compile the =styles.clj= file and could not
+    find the =garden= dependency then.
+    With the current workaround one also needs to reload the page twice to see
+    the latest changes.
+    Not sure why this did happen.
+
+    Nicer than this would be using the option =:realod true= for the
+    =serve-backend= task, but I could not restrict the directory when doing so.
+    ;(
+
+    Both "params" middlewares are needed by the websocket library =sente=.
+    #+BEGIN_SRC clojure :noweb-ref "backend service middlewares"
+
+    (def api (-> api-handlers
+               (reload/wrap-reload {:dirs ["src/clj/pva_parrot/backend"]})
+               (keyword-params/wrap-keyword-params)
+               (params/wrap-params)))
+
+    #+END_SRC
+
+*** Event handling
+    Incoming events are handled by a multimethod wich dispatches on the =:id=
+    of the event.
+
+    #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
+    (defmulti event-msg-handler :id)
+
+    (defmethod event-msg-handler :default
+      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+      (when ?reply-fn
+        (?reply-fn {:unmatched-event-as-echoed-from-server event})))
+
+    (defmethod event-msg-handler :pva-parrot/import-file
+      [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+      (when ?data
+        (let [session   (:session ring-req)
+              uid       (:uid session)
+              raw-data  (csv/read-csv (:file-body ?data))
+              pca-data  (pva-parrot.calc.pca/components raw-data)
+              reply-msg [:pvaparrot/pca pca-data]]
+          (chsk-send! uid reply-msg))))
+
+    (sente/start-chsk-router! ch-chsk event-msg-handler)
+
+    #+END_SRC

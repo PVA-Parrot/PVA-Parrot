@@ -1,6 +1,8 @@
+#+INCLUDE: "~/git_repos/PVA-parrot/PVA-Parrot/org/org_settings_weave.org"
+
 #+INCLUDE: "~/git_repos/PVA-parrot/PVA-Parrot/org/org_settings.org"
 
-#+INCLUDE: "~/git_repos/PVA-parrot/PVA-Parrot/org/org_settings_weave.org"
+#+TODO: CHORE(c!) BUG(b!) IDEA(i!) | FIXED(f!)
 
 * Introduction
   PVA-Parrot is an application for doing polytopic vector analysis. This is the
@@ -268,18 +270,28 @@
     file, database and web service access.
 
 * Todos
-** CHORE TODO org file needs to be split, gets way too slow
+** FIXED org file needs to be split, gets way too slow
    :LOGBOOK:
+   - State "FIXED"      from ""           [2015-03-07 Sat 21:08]
    - State "CHORE"      from ""           [2015-03-07 Sat 11:44]
    :END:
    <2015-03-07 Sat>
-** CHORE TODO it's about time to start adding tests I guess
+** CHORE it's about time to start adding tests I guess
    :LOGBOOK:
+   - State "CHORE"      from "IDEA"       [2015-03-07 Sat 21:09]
+   - State "IDEA"       from ""           [2015-03-07 Sat 21:09]
    - State "CHORE"      from ""           [2015-03-07 Sat 11:44]
    :END:
    <2015-03-07 Sat>
 
-** IDEA TODO use CLJSJS
+** IDEA use CLJSJS
    :LOGBOOK:
+   - State "IDEA"       from ""           [2015-03-07 Sat 21:09]
    - State "IDEA"       from ""           [2015-03-07 Sat 17:34]
    :END:
+
+** IDEA use datatables
+   :LOGBOOK:
+   - State "IDEA"       from ""           [2015-03-07 Sat 21:09]
+   :END:
+   see reagent cookbook: https://github.com/reagent-project/reagent-cookbook

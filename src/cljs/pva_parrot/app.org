@@ -172,7 +172,7 @@
          [submit-file-component "Import CSV file:"]]]
        [:div.row
         [:div.col-lg-12
-         [plot/plot-component {:data (:plot-data @app-state)]]]])
+         [plot/plot-component {:data (:plot-data @app-state)}]]]])
 
     (defn page-component []
       (let [pages {:welcome [welcome-page]

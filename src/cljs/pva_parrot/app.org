@@ -82,23 +82,6 @@
         (store-text-file! file :import-file)))
     #+END_SRC
 
-*** Event handling
-    :PROPERTIES:
-    :noweb-ref: app event handling
-    :END:
-
-    When getting PCA results from the backend, combine and transpose the data
-    and store it into =app-state :plot-data= from where =plot-component= will
-    retrieve it.
-    #+BEGIN_SRC clojure
-
-    (defmethod websockets/handle-event :pvaparrot/pca
-      [[_ data]]
-      (debugf "PCA data received: %s" data)
-      (swap! app-state assoc :plot-data (apply mapv vector [(:x1 data) (:x2 data)])))
-
-    #+END_SRC
-
 *** UI components
     :PROPERTIES:
     :noweb-ref: app user interface components
@@ -142,25 +125,27 @@
       [:input.btn {:name "import-file" :type "file" :accept "text/csv"
                    :on-change import-file!}])
 
-    (defn submit-file []
+    (defn submit-file [this]
       (let [file-body (:import-file @app-state)
             event-data {:file-body file-body}]
+        (.preventDefault this)
         (websockets/chsk-send! [:pva-parrot/import-file event-data])))
 
     (defn submit-file-component [text]
-      [:div
-       [:p "Import a file:"]
-       [file-input]
+      [:form.form-inline {:action ""}
+
+       [:div.form-group
+        [:label {:for "import-file"} text]
+        [file-input]]
+
        [styled-button :style "primary"
-        :contents "Import file"
+        :contents "Import it"
         :click-handler submit-file]])
     #+END_SRC
-
 
 *** Pages
 
     #+BEGIN_SRC clojure :noweb-ref "app pages"
-
 
     (defn welcome-page []
       [:div.jumbotron
@@ -173,20 +158,44 @@
 
     (defn plot-page []
       [:div
-       [plot/plot-component (:plot-data @app-state)]
-       [pages-button :welcome "Show Welcome Screen"]])
+       [back-button :welcome]
+       [plot/plot-component (reagent/cursor app-state [:plot-data])]])
 
     (defn pca-page []
       [:div
-       [back-button :welcome "Back to Welcome Screen"]
-       [submit-file-component "Import CSV file"]
-       ])
+       [:div.row
+        [:div.col-lg-12
+         [back-button :welcome]]]
+       [:h1 "Principal Component Analysis"]
+       [:div.row
+        [:div.col-lg-12
+         [submit-file-component "Import CSV file:"]]]
+       [:div.row
+        [:div.col-lg-12
+         [plot/plot-component {:data (:plot-data @app-state)]]]])
 
     (defn page-component []
       (let [pages {:welcome [welcome-page]
                    :plot [plot-page]
                    :pca [pca-page]}]
         ((:page @app-state) pages)))
+
+    #+END_SRC
+
+*** Event handling
+    :PROPERTIES:
+    :noweb-ref: app event handling
+    :END:
+
+    When getting PCA results from the backend, combine and transpose the data
+    and store it into =app-state :plot-data= from where =plot-component= will
+    retrieve it.
+    #+BEGIN_SRC clojure
+
+    (defmethod websockets/handle-event :pvaparrot/pca
+      [[_ data]]
+      (debugf "PCA data received: %s" data)
+      (swap! app-state assoc :plot-data (apply mapv vector [(:x1 data) (:x2 data)])))
 
     #+END_SRC
 

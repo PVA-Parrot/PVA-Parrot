@@ -16,3 +16,4 @@ pom.xml.asc
 org/*\[\*Org*
 /.nrepl-history
 /.nrepl-port
+/resources/index.html

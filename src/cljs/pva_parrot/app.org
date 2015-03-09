@@ -39,6 +39,7 @@
 
     (def app-state (atom {:page :welcome
                               :import-file nil
+                              :parsed-file nil
                               :plot-data nil
                               :project {:name "My Project"}
                               }))
@@ -145,38 +146,48 @@
         :click-handler submit-file]])
     #+END_SRC
 
-*** Pages
+    Tables for showing data. Using =DataTables= jQuery plugin.
 
-    #+BEGIN_SRC clojure :noweb-ref "app pages"
+    #+BEGIN_SRC clojure
 
-    (defn welcome-page []
-      [:div.jumbotron
-       [:img.img-responsive {:src "img/parrot.png"}]
-       [:h1 "PVA Parrot"]
-       [:h2 "An application for polytopic vector analysis"]
-       [:hr]
-       [pages-button :pca "PCA Example"]
-       [pages-button :pva-workbook "PVA Workbook"]])
+       (defn table-header [headings]
+         [:tr (map (fn [cell] [:th cell]) headings)])
 
-    (defn pca-page []
-      [:div
-       [:div.row
-        [:div.col-lg-12
-         [back-button :welcome]]]
-       [:h1 "Principal Component Analysis"]
-       [:div.row
-        [:div.col-lg-12
-         [submit-file-component "Import CSV file:"]]]
-       [:div.row
-        [:div.col-lg-12
-         [plot/plot-component {:data (:plot-data @app-state)}]]]])
+       (defn table-row [row]
+         [:tr (map (fn [cell] [:td cell]) row)])
 
-    (defn accordion-section [{:keys [key default title]} contents]
+       (defn table [data]
+         (if data
+           (let [headings (first data)
+                 body (rest data)]
+             [:table.table.table-striped.table-bordered {:cell-spacing 0 :width "100%"}
+              [:thead
+               [table-header headings]]
+              [:tbody
+               (map table-row body)
+               ]])
+           [:div]))
+
+       (defn refresh-table [comp]
+         (.DataTable (js/$ (reagent/dom-node comp))))
+
+       (defn table-component [data]
+         (reagent/create-class {:reagent-render table
+                                :component-did-mount refresh-table
+                                :component-did-update refresh-table}))
+
+    #+END_SRC
+
+    An accordion to split the app UI into procedural sections. Based on the
+    bootstrap accordion.
+
+    #+BEGIN_SRC clojure
+    (defn accordion-section [{:keys [key default title]} & contents]
       (let [id (str "collapse-" key)
             heading-id (str "heading-" key)]
         [:div.panel.panel-default
          [:div.panel-heading {:role "tab" :id heading-id}
-          [:h2.panel-title
+          [:h1.panel-title
            [:a {:data-toggle "collapse"
                 :href (str "#" id) :aria-extended true
                 :aria-contols id}
@@ -187,15 +198,22 @@
            contents]
           ]]))
 
-    (defn accordion []
+    (defn accordion-component []
       [:div.panel-group {:role "tablist"}
        [accordion-section {:key "analytical-data"
                            :title "1. Analytical Data"}
-        [submit-file-component "Import CSV Dataset"]]
+        [submit-file-component "Import CSV Dataset"]
+        [:h2 "Dataset:"]
+        [table-component (@app-state :parsed-file)]]
        [accordion-section {:key "sign-components"
                            :title "2. Significant Components"}]
        [accordion-section {:key "comp-and-props"
                            :title "3. Compositions and Proportions"}]])
+    #+END_SRC
+
+*** Pages
+
+    #+BEGIN_SRC clojure :noweb-ref "app pages"
 
     (defn pva-workbook [project]
       [:div
@@ -204,15 +222,23 @@
        [:div.row
         [:div.col-lg-12
          [:h1 (str "Project: " (:name @project))]
-         [accordion]
+         [accordion-component]
          ]]])
+
+    (defn welcome-page []
+      [:div.jumbotron
+       [:img.img-responsive {:src "img/parrot.png"}]
+       [:h1 "PVA Parrot"]
+       [:h2 "An application for polytopic vector analysis"]
+       [:hr]
+       [pages-button :pva-workbook "Go to Workbook"]])
 
     (defn page-component []
       (let [pages {:welcome [welcome-page]
-                   :pca [pca-page]
                    :pva-workbook [pva-workbook
                                   (reagent/cursor app-state [:project])]}]
         ((:page @app-state) pages)))
+
     #+END_SRC
 
 *** Event handling
@@ -220,15 +246,12 @@
     :noweb-ref: app event handling
     :END:
 
-    When getting PCA results from the backend, combine and transpose the data
-    and store it into =app-state :plot-data= from where =plot-component= will
-    retrieve it.
     #+BEGIN_SRC clojure
 
-    (defmethod websockets/handle-event :pvaparrot/pca
+    (defmethod websockets/handle-event :pvaparrot/imported-file
       [[_ data]]
-      (debugf "PCA data received: %s" data)
-      (swap! app-state assoc :plot-data (apply mapv vector [(:x1 data) (:x2 data)])))
+      (debugf "Imported data received: %s" data)
+      (swap! app-state assoc :parsed-file data))
 
     #+END_SRC
 

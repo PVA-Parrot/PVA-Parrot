@@ -23,7 +23,7 @@
                 [taoensso.sente                 :as sente]
                 [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]
                 [clojure.data.csv               :as csv]
-                [pva-parrot.calc.pca            :as pca]))
+                ))
 
     <<backend service websocket handlers>>
 
@@ -97,8 +97,7 @@
         (let [session   (:session ring-req)
               uid       (:uid session)
               raw-data  (csv/read-csv (:file-body ?data))
-              pca-data  (pva-parrot.calc.pca/components raw-data)
-              reply-msg [:pvaparrot/pca pca-data]]
+              reply-msg [:pvaparrot/imported-file raw-data]]
           (chsk-send! uid reply-msg))))
 
     (sente/start-chsk-router! ch-chsk event-msg-handler)

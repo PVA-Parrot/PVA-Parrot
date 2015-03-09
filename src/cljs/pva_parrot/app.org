@@ -37,9 +37,11 @@
 
     #+BEGIN_SRC clojure
 
-    (defonce app-state (atom {:page :welcome
+    (def app-state (atom {:page :welcome
                               :import-file nil
-                              :plot-data nil}))
+                              :plot-data nil
+                              :project {:name "My Project"}
+                              }))
 
     #+END_SRC
 
@@ -153,13 +155,8 @@
        [:h1 "PVA Parrot"]
        [:h2 "An application for polytopic vector analysis"]
        [:hr]
-       [pages-button :plot "Show Example Plot"]
-       [pages-button :pca "PCA Example"]])
-
-    (defn plot-page []
-      [:div
-       [back-button :welcome]
-       [plot/plot-component (reagent/cursor app-state [:plot-data])]])
+       [pages-button :pca "PCA Example"]
+       [pages-button :pva-workbook "PVA Workbook"]])
 
     (defn pca-page []
       [:div
@@ -174,12 +171,48 @@
         [:div.col-lg-12
          [plot/plot-component {:data (:plot-data @app-state)}]]]])
 
+    (defn accordion-section [{:keys [key default title]} contents]
+      (let [id (str "collapse-" key)
+            heading-id (str "heading-" key)]
+        [:div.panel.panel-default
+         [:div.panel-heading {:role "tab" :id heading-id}
+          [:h2.panel-title
+           [:a {:data-toggle "collapse"
+                :href (str "#" id) :aria-extended true
+                :aria-contols id}
+            title]]]
+         [:div.panel-collapse.collapse.in {:role "tabpanel" :id id
+                                           :aria-labelledby heading-id}
+          [:div.panel-body
+           contents]
+          ]]))
+
+    (defn accordion []
+      [:div.panel-group {:role "tablist"}
+       [accordion-section {:key "analytical-data"
+                           :title "1. Analytical Data"}
+        [submit-file-component "Import CSV Dataset"]]
+       [accordion-section {:key "sign-components"
+                           :title "2. Significant Components"}]
+       [accordion-section {:key "comp-and-props"
+                           :title "3. Compositions and Proportions"}]])
+
+    (defn pva-workbook [project]
+      [:div
+       [:div.col-lg-12
+        [back-button :welcome]]
+       [:div.row
+        [:div.col-lg-12
+         [:h1 (str "Project: " (:name @project))]
+         [accordion]
+         ]]])
+
     (defn page-component []
       (let [pages {:welcome [welcome-page]
-                   :plot [plot-page]
-                   :pca [pca-page]}]
+                   :pca [pca-page]
+                   :pva-workbook [pva-workbook
+                                  (reagent/cursor app-state [:project])]}]
         ((:page @app-state) pages)))
-
     #+END_SRC
 
 *** Event handling

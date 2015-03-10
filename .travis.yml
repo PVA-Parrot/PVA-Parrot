@@ -10,10 +10,9 @@ install:
 # Install Org-Mode
 - mkdir ~/elisp
 - git clone git://orgmode.org/org-mode.git ~/elisp/org-mode
+- pushd
 - cd ~/elisp/org-mode && make autoloads
-
-# go back to project directory
-- cd 
+- popd
 
 # Tangle clojure files
 - ./org/tangle.sh ./org/pva-parrot.org

@@ -5,4 +5,4 @@
 (deftest backend-service
   (testing "Event Handling"
     (testing "file import"
-      (is (= 3 (event-msg-handler {:id :pva-parrot/import-file}))))))
+      (is (= nil (event-msg-handler {:id :pva-parrot/import-file}))))))

@@ -23,6 +23,13 @@
 
  Instructions about developing and building the application.
 
+** IDEA use CLJSJS
+   :LOGBOOK:
+   - State "IDEA"       from ""           [2015-03-07 Sat 21:09]
+   - State "IDEA"       from ""           [2015-03-07 Sat 17:34]
+   :END:
+
+
 ** Prerequisites
    A JVM installation is required.
 
@@ -32,6 +39,7 @@
    #+END_SRC
 
 ** Boot project setup
+
     #+BEGIN_SRC clojure :noweb no-export :tangle ../build.boot
     (set-env!
       <<boot source paths>>
@@ -69,60 +77,42 @@
     :END:
 
    - Clojurescript :: essential for the GUI client logic.
+   - boot-cljs :: compilation of cljs files from boot tasks
+   - boot-cljs-repl :: Clojurescript repl support
+   - boot-reload :: trigger reload in browser when files changes
+   - boot-http :: a simple HTTP serve task
+   - boot-notify :: visual notifications of boot build status
+   - boot-garden :: compile garden data to CSS
+   - boot-test :: run clojure.test tests
    #+BEGIN_SRC clojure
    [org.clojure/clojurescript "0.0-2814"]
-   #+END_SRC
-
-   - boot-cljs :: compilation of cljs files from boot tasks
-   #+BEGIN_SRC clojure
-   [adzerk/boot-cljs      "0.0-2814-1" :scope "test"]
-   #+END_SRC
-
-   - boot-cljs-repl :: Clojurescript repl support
-   #+BEGIN_SRC clojure
-   [adzerk/boot-cljs-repl "0.1.9" :scope "test"]
-   #+END_SRC
-
-   - boot-reload :: trigger reload in browser when files changes
-   #+BEGIN_SRC clojure
-   [adzerk/boot-reload    "0.2.4"      :scope "test"]
-   #+END_SRC
-
-   - boot-http :: a simple HTTP serve task
-   #+BEGIN_SRC clojure
-   [pandeiro/boot-http    "0.6.3-SNAPSHOT"      :scope "test"]
-   #+END_SRC
-
-   - boot-notify :: visual notifications of boot build status
-   #+BEGIN_SRC clojure
-   [jeluard/boot-notify   "0.1.1"      :scope "test"]
-   #+END_SRC
-
-   - boot-garden :: compile garden data to CSS
-   #+BEGIN_SRC clojure
-   [boot-garden           "1.2.5-2"    :scope "test"]
+   [adzerk/boot-cljs      "0.0-2814-1"      :scope "test"]
+   [adzerk/boot-cljs-repl "0.1.9"           :scope "test"]
+   [adzerk/boot-reload    "0.2.4"           :scope "test"]
+   [pandeiro/boot-http    "0.6.3-SNAPSHOT"  :scope "test"]
+   [jeluard/boot-notify   "0.1.1"           :scope "test"]
+   [boot-garden           "1.2.5-2"         :scope "test"]
+   [adzerk/boot-test      "1.0.3"           :scope "test"]
    #+END_SRC
 
    - reagent :: clojurescript library for Facebook React, used for UI
         programming, linking app state with UI
-   #+BEGIN_SRC clojure
-   [reagent               "0.5.0-alpha3"]
-   #+END_SRC
-
    - sente :: socket and AJAX communication library, backend and frontend
    - encore :: a depenendcy of =sente= and =timbre=, explicitly added to prevent
         [[https://github.com/ptaoussanis/encore/blob/master/DEP-CONFLICT.md][dependency version conflicts]]
    #+BEGIN_SRC clojure
-   [com.taoensso/encore "1.21.0"]
-   [com.taoensso/sente "1.3.0"]
+   [reagent               "0.5.0-alpha3"]
+   [com.taoensso/encore   "1.21.0"]
+   [com.taoensso/sente    "1.3.0"]
+   [garden                "1.2.5"]
    #+END_SRC
 
 
 **** Backend dependencies
      #+BEGIN_SRC clojure
-     [ring/ring-core "1.3.2"]
-     [http-kit "2.1.19"]
-     [compojure "1.3.1"]
+     [ring/ring-core      "1.3.2"]
+     [http-kit            "2.1.19"]
+     [compojure           "1.3.1"]
      [com.taoensso/timbre "3.4.0"]
      [org.clojure/data.csv "0.1.2"]
      #+END_SRC
@@ -135,22 +125,21 @@
 
 
 *** Tasks definitions
-    :PROPERTIES:
-    :noweb-ref: boot tasks
-    :END:
-
     These are the tasks for the GUI application. Libs may define their own,
     additional tasks, e.g. [[id:libs-backend]]
 
-    #+BEGIN_SRC clojure
+    Tasks from the boot community are available at
+    https://github.com/boot-clj/boot/wiki/Community-Tasks
+
+    #+BEGIN_SRC clojure :noweb-ref "boot tasks"
     (require
       '[adzerk.boot-cljs      :refer [cljs]]
       '[adzerk.boot-cljs-repl :refer [cljs-repl start-repl]]
       '[adzerk.boot-reload    :refer [reload]]
+      '[adzerk.boot-test      :refer :all]
       '[pandeiro.boot-http    :refer [serve]]
       '[boot-garden.core      :refer [garden]]
       '[jeluard.boot-notify   :refer [notify]])
-
 
     (deftask build []
       (comp
@@ -182,7 +171,7 @@
 
     (deftask prod
       "Simple alias to run application in production mode
-       No REPL or automatic reloading code inserted."
+           No REPL or automatic reloading code inserted."
       []
       (comp (production)
         (serve)
@@ -196,17 +185,36 @@
         (dev-run)))
     #+END_SRC
 
+    Tasks for running tests. So far namespaces to be tested need to be specified
+    manually in the task options. Would like to improve this to make it pick up
+    all namespaces from the =/test= directory automatically.
+
+    In any case the =/test= directory needs to be added to the =:source-paths=
+    to make the tests available on the classpath.
+
+    #+BEGIN_SRC clojure :noweb-ref "boot tasks"
+    (deftask run-tests
+      "Run all PVA-Parrot tests"
+      []
+      (set-env! :source-paths #(conj % "test"))
+      (test))
+
+    (task-options!
+      test {:namespaces '#{pva-parrot.backend.service-test}})
+    #+END_SRC
+
 **** Boot tasks for backend service
 
      Start the backend server and the GUI client via =boot serve-backend dev=
 
      boot task to start the backend server:
-     #+BEGIN_SRC clojure
-         (deftask serve-backend []
-           (comp
-             (serve :handler 'pva-parrot.backend.service/api
-               :httpkit true
-               :port 3333)))
+     #+BEGIN_SRC clojure :noweb-ref "boot tasks"
+     (deftask serve-backend []
+       (comp
+         (serve :handler 'pva-parrot.backend.service/api
+           :reload true
+           :httpkit true
+           :port 3333)))
      #+END_SRC
 
  #
@@ -223,6 +231,39 @@
          :version <<version>>
          :description <<description>>}
     #+END_SRC
+
+** Continuous Integration
+   drone.io is used as a CI service. The project can be found at
+   https://drone.io/github.com/PVA-Parrot/PVA-Parrot
+
+   A push to github will trigger running tests on the latest revision.
+
+   The build commands run on the CI are:
+   #+BEGIN_SRC bash
+   # Install Emacs24
+   sudo apt-add-repository ppa:cassou/emacs
+   sudo apt-get update
+   sudo apt-get install emacs24 emacs24-el emacs24-common-non-dfsg
+
+   # Install Org-Mode
+   mkdir ~/elisp
+   git clone git://orgmode.org/org-mode.git ~/elisp/org-mode
+   cd ~/elisp/org-mode && make autoloads
+
+   # go back to project directory
+   cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
+
+   # Tangle clojure files
+   ./org/tangle.sh ./org/pva-parrot.org
+
+   # Install Boot
+   wget https://github.com/boot-clj/boot/releases/download/2.0.0-rc12/boot.sh
+   mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
+
+   # back to project directory and start tests
+   cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
+   boot run-tests
+   #+END_SRC
 
 ** Troubleshooting
 *** JVM Config and Java 8
@@ -542,7 +583,7 @@
 
 ** CSS Styles
 
-   #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/styles.clj
+   #+BEGIN_SRC clojure :noweb no-export :tangle ../src/clj/pva_parrot/styles.clj
    (ns pva-parrot.styles
      (:require [garden.def :refer [defrule defstyles]]
                [garden.stylesheet :refer [rule]]))
@@ -561,7 +602,7 @@
    A class =.top-buffer=, used to add a top padding to bootstrap grid rows.
    Without this, there is no gap between rows.
 
-   #+BEGIN_SRC clojure :noweb-ref
+   #+BEGIN_SRC clojure :noweb-ref "styles grid"
    (defstyles grid
      [:.top-buffer { :margin-top "20px"}])
    #+END_SRC
@@ -686,8 +727,7 @@
 
      #+BEGIN_SRC clojure :noweb no-export :tangle ../src/clj/pva_parrot/backend/service.clj
      (ns pva-parrot.backend.service
-       (:require [ring.middleware.reload         :as reload]
-                 [ring.middleware.params         :as params]
+       (:require [ring.middleware.params         :as params]
                  [ring.middleware.keyword-params :as keyword-params]
                  [compojure.core                 :refer :all]
                  [taoensso.sente                 :as sente]
@@ -727,23 +767,10 @@
 
 **** Middlewares
 
-     Need to wrap the ring reload handler manually and restrict the directory to
-     look for updates to the one of the backend. Otherwise I got exceptions
-     because it was also trying to compile the =styles.clj= file and could not
-     find the =garden= dependency then.
-     With the current workaround one also needs to reload the page twice to see
-     the latest changes.
-     Not sure why this did happen.
-
-     Nicer than this would be using the option =:realod true= for the
-     =serve-backend= task, but I could not restrict the directory when doing so.
-     ;(
-
      Both "params" middlewares are needed by the websocket library =sente=.
      #+BEGIN_SRC clojure :noweb-ref "backend service middlewares"
 
      (def api (-> api-handlers
-                (reload/wrap-reload {:dirs ["src/clj/pva_parrot/backend"]})
                 (keyword-params/wrap-keyword-params)
                 (params/wrap-params)))
 
@@ -774,6 +801,17 @@
 
      #+END_SRC
 
+     #+BEGIN_SRC clojure :tangle ../test/pva_parrot/backend/service_test.clj
+     (ns pva-parrot.backend.service-test
+       (:require [clojure.test :refer :all]
+                 [pva-parrot.backend.service :refer :all]))
+
+     (deftest backend-service
+       (testing "Event Handling"
+         (testing "file import"
+           (is (= nil (event-msg-handler {:id :pva-parrot/import-file}))))))
+     #+END_SRC
+
 ** Calculations
    Libraries for running calculations on data.
    #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/calc/pca.clj
@@ -782,6 +820,8 @@
                [incanter.stats :refer :all]))
 
    (defn components [data]
+     "calulate principal components
+      WARNING: atm this is tailored to the iris example dataset!"
      (let [mat (to-matrix (to-dataset data))
            x (sel mat :cols (range 4))
            species (sel mat :cols 4)
@@ -807,30 +847,3 @@
 
       Libraries for getting data in and out of the app. This includes for example
       file, database and web service access.
-
-* Todos
-** FIXED org file needs to be split, gets way too slow
-   :LOGBOOK:
-   - State "FIXED"      from ""           [2015-03-07 Sat 21:08]
-   - State "CHORE"      from ""           [2015-03-07 Sat 11:44]
-   :END:
-   <2015-03-07 Sat>
-** CHORE it's about time to start adding tests I guess
-   :LOGBOOK:
-   - State "CHORE"      from "IDEA"       [2015-03-07 Sat 21:09]
-   - State "IDEA"       from ""           [2015-03-07 Sat 21:09]
-   - State "CHORE"      from ""           [2015-03-07 Sat 11:44]
-   :END:
-   <2015-03-07 Sat>
-
-** IDEA use CLJSJS
-   :LOGBOOK:
-   - State "IDEA"       from ""           [2015-03-07 Sat 21:09]
-   - State "IDEA"       from ""           [2015-03-07 Sat 17:34]
-   :END:
-
-** IDEA use datatables
-   :LOGBOOK:
-   - State "IDEA"       from ""           [2015-03-07 Sat 21:09]
-   :END:
-   see reagent cookbook: https://github.com/reagent-project/reagent-cookbook

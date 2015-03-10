@@ -20,6 +20,4 @@ install:
 - wget https://github.com/boot-clj/boot/releases/download/2.0.0-rc12/boot.sh
 - mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
 
-# back to project directory and start tests
-- cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
 script: ./boot run-tests

@@ -10,8 +10,7 @@ install:
 # Install Org-Mode
 - mkdir ~/elisp
 - git clone git://orgmode.org/org-mode.git ~/elisp/org-mode
-- pushd
-- cd ~/elisp/org-mode && make autoloads
+- pushd ~/elisp/org-mode && make autoloads
 - popd
 
 # Tangle clojure files

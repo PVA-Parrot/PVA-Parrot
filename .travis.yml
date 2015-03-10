@@ -13,7 +13,7 @@ install:
 - cd ~/elisp/org-mode && make autoloads
 
 # go back to project directory
-- cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
+- cd 
 
 # Tangle clojure files
 - ./org/tangle.sh ./org/pva-parrot.org

@@ -233,37 +233,70 @@
     #+END_SRC
 
 ** Continuous Integration
-   drone.io is used as a CI service. The project can be found at
-   https://drone.io/github.com/PVA-Parrot/PVA-Parrot
 
-   A push to github will trigger running tests on the latest revision.
+*** travis CI
+    #+BEGIN_SRC ruby :tangle ../.travis.yml
+    language: clojure
+    jdk:
+    - oraclejdk8
+    install:
+    # Install Emacs24
+    - sudo apt-add-repository ppa:cassou/emacs
+    - sudo apt-get update
+    - sudo apt-get install emacs24 emacs24-el emacs24-common-non-dfsg
 
-   The build commands run on the CI are:
-   #+BEGIN_SRC bash
-   # Install Emacs24
-   sudo apt-add-repository ppa:cassou/emacs
-   sudo apt-get update
-   sudo apt-get install emacs24 emacs24-el emacs24-common-non-dfsg
+    # Install Org-Mode
+    - mkdir ~/elisp
+    - git clone git://orgmode.org/org-mode.git ~/elisp/org-mode
+    - cd ~/elisp/org-mode && make autoloads
 
-   # Install Org-Mode
-   mkdir ~/elisp
-   git clone git://orgmode.org/org-mode.git ~/elisp/org-mode
-   cd ~/elisp/org-mode && make autoloads
+    # go back to project directory
+    - cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
 
-   # go back to project directory
-   cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
+    # Tangle clojure files
+    - ./org/tangle.sh ./org/pva-parrot.org
 
-   # Tangle clojure files
-   ./org/tangle.sh ./org/pva-parrot.org
+    # Install Boot
+    - wget https://github.com/boot-clj/boot/releases/download/2.0.0-rc12/boot.sh
+    - mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
 
-   # Install Boot
-   wget https://github.com/boot-clj/boot/releases/download/2.0.0-rc12/boot.sh
-   mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
+    # back to project directory and start tests
+    - cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
+    script: ./boot run-tests
+    #+END_SRC
 
-   # back to project directory and start tests
-   cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
-   boot run-tests
-   #+END_SRC
+*** drone.io
+    drone.io is used as a CI service. The project can be found at
+    https://drone.io/github.com/PVA-Parrot/PVA-Parrot
+
+    A push to github will trigger running tests on the latest revision.
+
+    The build commands run on the CI are:
+    #+BEGIN_SRC bash
+    # Install Emacs24
+    sudo apt-add-repository ppa:cassou/emacs
+    sudo apt-get update
+    sudo apt-get install emacs24 emacs24-el emacs24-common-non-dfsg
+
+    # Install Org-Mode
+    mkdir ~/elisp
+    git clone git://orgmode.org/org-mode.git ~/elisp/org-mode
+    cd ~/elisp/org-mode && make autoloads
+
+    # go back to project directory
+    cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
+
+    # Tangle clojure files
+    ./org/tangle.sh ./org/pva-parrot.org
+
+    # Install Boot
+    wget https://github.com/boot-clj/boot/releases/download/2.0.0-rc12/boot.sh
+    mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
+
+    # back to project directory and start tests
+    cd /home/ubuntu/src/github.com/PVA-Parrot/PVA-Parrot
+    boot run-tests
+    #+END_SRC
 
 ** Troubleshooting
 *** JVM Config and Java 8

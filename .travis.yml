@@ -3,9 +3,9 @@ jdk:
 - oraclejdk8
 install:
 # Install Emacs24
-- sudo apt-add-repository ppa:cassou/emacs
+- sudo apt-add-repository -y ppa:cassou/emacs
 - sudo apt-get update
-- sudo apt-get install emacs24 emacs24-el emacs24-common-non-dfsg
+- sudo apt-get install -y emacs24 emacs24-el emacs24-common-non-dfsg
 
 # Install Org-Mode
 - mkdir ~/elisp

@@ -92,7 +92,7 @@
    [pandeiro/boot-http    "0.6.3-SNAPSHOT"  :scope "test"]
    [jeluard/boot-notify   "0.1.1"           :scope "test"]
    [boot-garden           "1.2.5-2"         :scope "test"]
-   [adzerk/boot-test      "1.0.3"           :scope "test"]
+   [adzerk/boot-test      "1.0.4"           :scope "test"]
    #+END_SRC
 
    - reagent :: clojurescript library for Facebook React, used for UI
@@ -185,12 +185,8 @@
         (dev-run)))
     #+END_SRC
 
-    Tasks for running tests. So far namespaces to be tested need to be specified
-    manually in the task options. Would like to improve this to make it pick up
-    all namespaces from the =/test= directory automatically.
-
-    In any case the =/test= directory needs to be added to the =:source-paths=
-    to make the tests available on the classpath.
+    Tasks for running tests. The =/test= directory needs to be added to the
+    =:source-paths= to make the tests available on the classpath.
 
     #+BEGIN_SRC clojure :noweb-ref "boot tasks"
     (deftask run-tests
@@ -199,8 +195,6 @@
       (set-env! :source-paths #(conj % "test"))
       (test))
 
-    (task-options!
-      test {:namespaces '#{pva-parrot.backend.service-test}})
     #+END_SRC
 
 **** Boot tasks for backend service

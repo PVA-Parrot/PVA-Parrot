@@ -343,8 +343,8 @@
 
     (def app-state (atom {:page :welcome
                               :import-file nil
-                              :parsed-file nil
-                              :plot-data nil
+                              :parsed-data nil
+                              :pca-data nil
                               :project {:name "My Project"}
                               }))
 
@@ -354,8 +354,6 @@
 
     - :page :: the page currently active
     - :import-file :: file to be imported/uploaded
-    - :plot-data :: data to be plotted, currently only a single plot is
-         supported and will use this data
 
     -----
     *Updating app state*
@@ -393,135 +391,138 @@
     :PROPERTIES:
     :noweb-ref: app user interface components
     :END:
+**** Page component
+     The page component holds references to the available pages. The active page
+     is stored in the =app-state= atom and =page-component= reflects this to show
+     the active page.
+     #+BEGIN_SRC clojure :noweb-ref "app page component"
 
-    The page component holds references to the available pages. The active page
-    is stored in the =app-state= atom and =page-component= reflects this to show
-    the active page.
-    #+BEGIN_SRC clojure :noweb-ref "app page component"
+     (defn page-component []
+       (let [pages {:welcome [welcome-page]
+                    :pva-workbook [pva-workbook
+                                   (reagent/cursor app-state [:project])]}]
+         ((:page @app-state) pages)))
 
-    (defn page-component []
-      (let [pages {:welcome [welcome-page]
-                   :pva-workbook [pva-workbook
-                                  (reagent/cursor app-state [:project])]}]
-        ((:page @app-state) pages)))
+     #+END_SRC
 
-    #+END_SRC
+**** Buttons
+     The generic =styled-button= function is a Reagent component to render a
+     button styled with twitter bootstrap css.
 
-    The generic =styled-button= function is a Reagent component to render a
-    button styled with twitter bootstrap css.
+     Based on this base button, further button components are declared to handle
+     specific use cases.
 
-    Based on this base button, further button components are declared to handle
-    specific use cases.
+     #+BEGIN_SRC clojure
 
-    #+BEGIN_SRC clojure
+     (defn styled-button [& opts]
+       (let [{:keys [style size click-handler contents]} opts
+             classes (clojure.string/join " " [(when style (str "btn-" style))
+                                               (when size  (str "btn-" size))])]
+         [:button.btn {:class classes :on-click click-handler} contents]))
 
-    (defn styled-button [& opts]
-      (let [{:keys [style size click-handler contents]} opts
-            classes (clojure.string/join " " [(when style (str "btn-" style))
-                                              (when size  (str "btn-" size))])]
-        [:button.btn {:class classes :on-click click-handler} contents]))
+     (defn pages-button [target text & opts]
+       [styled-button
+         :contents text
+         :style "primary"
+         :size "lg"
+         :click-handler #(swap-page target)])
 
-    (defn pages-button [target text & opts]
-      [styled-button
-        :contents text
-        :style "primary"
-        :size "lg"
-        :click-handler #(swap-page target)])
+     (defn back-button [target]
+       [styled-button
+         :size "sm"
+         :contents "back"
+         :click-handler #(swap-page target)])
 
-    (defn back-button [target]
-      [styled-button
-        :size "sm"
-        :contents "back"
-        :click-handler #(swap-page target)])
+     #+END_SRC
 
-    #+END_SRC
+     Components to import files into the application. At the moment this is based
+     on uploading a file to the backend via HTML form submissions. When using a
+     desktop app shell, this might need to be changed.
 
-    Components to import files into the application. At the moment this is based
-    on uploading a file to the backend via HTML form submissions. When using a
-    desktop app shell, this might need to be changed.
+**** Inputs
+     #+BEGIN_SRC clojure
+     (defn file-input []
+       [:input.btn {:name "import-file" :type "file" :accept "text/csv"
+                    :on-change import-file!}])
 
-    #+BEGIN_SRC clojure
-    (defn file-input []
-      [:input.btn {:name "import-file" :type "file" :accept "text/csv"
-                   :on-change import-file!}])
+     (defn submit-file [this]
+       (let [file-body (:import-file @app-state)
+             event-data {:file-body file-body}]
+         (.preventDefault this)
+         (websockets/chsk-send! [:data-import/csv-sent event-data])))
 
-    (defn submit-file [this]
-      (let [file-body (:import-file @app-state)
-            event-data {:file-body file-body}]
-        (.preventDefault this)
-        (websockets/chsk-send! [:data-import/csv-sent event-data])))
+     (defn submit-file-component [text]
+       [:form.form-inline.well
 
-    (defn submit-file-component [text]
-      [:form.form-inline.well
+        [:div.form-group
+         [:label {:for "import-file"} text]
+         [file-input]]
 
-       [:div.form-group
-        [:label {:for "import-file"} text]
-        [file-input]]
+        [styled-button :style "primary"
+         :contents "Import it"
+         :click-handler submit-file]])
+     #+END_SRC
 
-       [styled-button :style "primary"
-        :contents "Import it"
-        :click-handler submit-file]])
-    #+END_SRC
+**** Tables
+     Tables for showing data. Using =DataTables= jQuery plugin.
 
-    Tables for showing data. Using =DataTables= jQuery plugin.
+     #+BEGIN_SRC clojure
 
-    #+BEGIN_SRC clojure
+     (defn table-header [headings]
+       [:tr (map (fn [cell] [:th.dt-center cell]) headings)])
 
-    (defn table-header [headings]
-      [:tr (map (fn [cell] [:th cell]) headings)])
+     (defn table-row [row]
+       [:tr (map (fn [cell] [:td.dt-right cell]) row)])
 
-    (defn table-row [row]
-      [:tr (map (fn [cell] [:td cell]) row)])
+     (defn table [{:keys [body headings]}]
+       (if body
+         [:table.table.display.compact
+          (when headings
+            [:thead
+             [table-header headings]])
+          [:tbody
+           (map table-row body)
+           ]]
+         [:div]))
 
-    (defn table [data]
-      (if data
-        (let [headings (first data)
-              body (rest data)]
-          [:table.table.table-striped.table-bordered {:cell-spacing 0 :width "100%"}
-           [:thead
-            [table-header headings]]
-           [:tbody
-            (map table-row body)
-            ]])
-        [:div]))
+     (defn refresh-table [comp]
+       (.DataTable (js/$ (reagent/dom-node comp))))
 
-    (defn refresh-table [comp]
-      (.DataTable (js/$ (reagent/dom-node comp))))
+     (defn table-component [data]
+       (reagent/create-class {:reagent-render table
+                              :component-did-mount refresh-table
+                              :component-did-update refresh-table}))
 
-    (defn table-component [data]
-      (reagent/create-class {:reagent-render table
-                             :component-did-mount refresh-table
-                             :component-did-update refresh-table}))
+     #+END_SRC
 
-    #+END_SRC
+**** Accordion
+     An accordion to split the app UI into procedural sections. Based on the
+     bootstrap accordion.
 
-    An accordion to split the app UI into procedural sections. Based on the
-    bootstrap accordion.
+     #+BEGIN_SRC clojure
+     (defn accordion-section [{:keys [key default title]} & contents]
+       (let [id (str "collapse-" key)
+             heading-id (str "heading-" key)]
+         [:div.panel.panel-default
+          [:div.panel-heading {:role "tab" :id heading-id}
+           [:h1.panel-title
+            [:a {:data-toggle "collapse"
+                 :href (str "#" id) :aria-extended true
+                 :aria-contols id}
+             title]]]
+          [:div.panel-collapse.collapse.in {:role "tabpanel" :id id
+                                            :aria-labelledby heading-id}
+           [:div.panel-body
+            contents]
+           ]]))
 
-    #+BEGIN_SRC clojure
-    (defn accordion-section [{:keys [key default title]} & contents]
-      (let [id (str "collapse-" key)
-            heading-id (str "heading-" key)]
-        [:div.panel.panel-default
-         [:div.panel-heading {:role "tab" :id heading-id}
-          [:h1.panel-title
-           [:a {:data-toggle "collapse"
-                :href (str "#" id) :aria-extended true
-                :aria-contols id}
-            title]]]
-         [:div.panel-collapse.collapse.in {:role "tabpanel" :id id
-                                           :aria-labelledby heading-id}
-          [:div.panel-body
-           contents]
-          ]]))
+     (defn accordion-component [sections]
+       [:div.panel-group {:role "tablist"}
+        (for [section sections]
+          (let [{:keys [key title content]} section]
+            [accordion-section {:key key :title title} content]))])
 
-    (defn accordion-component [sections]
-      [:div.panel-group {:role "tablist"}
-       (for [section sections]
-         (let [{:keys [key title content]} section]
-           [accordion-section {:key key :title title} content]))])
-
-    #+END_SRC
+     #+END_SRC
 
 *** Pages
 
@@ -534,17 +535,20 @@
       [:div
        [submit-file-component "Import CSV Dataset"]
        [:h2 "Dataset:"]
-       [table-component (@app-state :parsed-file)]])
+       [table-component (@app-state :parsed-data)]])
 
     (defn workbook-section-components []
-      [:form.form.well
-       [:p "Expected number of components"]
-       [:div.form-group
-        [:label {:for "components-min"} "min."]
-        [:input {:name "components-min" :type "number" :min 2 :value 2}]]
-       [:div.form-group
-        [:label {:for "components-max"} "max."]
-        [:input {:name "components-max" :type "number" :min 3 :value 5}]]])
+      [:div
+       [:form.form.well
+        [:p "Expected number of components"]
+        [:div.form-group
+         [:label {:for "components-min"} "min."]
+         [:input {:name "components-min" :type "number" :min 2 :value 2}]]
+        [:div.form-group
+         [:label {:for "components-max"} "max."]
+         [:input {:name "components-max" :type "number" :min 3 :value 5}]]]
+       [table-component (@app-state :pca-data)]
+       ])
 
     (defn workbook-section-proportions []
       [:div])
@@ -597,8 +601,9 @@
 
     (defmethod websockets/handle-event :data-import/file-returned
       [[_ data]]
-      (debugf "Imported data received: %s" data)
-      (swap! app-state assoc :parsed-file data))
+      (debugf "Imported raw data and PCA data received.")
+      (swap! app-state assoc :parsed-data (:parsed-data data))
+      (swap! app-state assoc :pca-data (:pca-data data)))
 
     #+END_SRC
 
@@ -619,7 +624,7 @@
        <meta charset="utf-8">
        <title>PVA Parrot</title>
        <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css" media="screen">
-       <link href="//cdn.datatables.net/plug-ins/f2c75b7247b/integration/bootstrap/3/dataTables.bootstrap.css" rel="stylesheet" type="text/css" media="screen">
+       <link href="//cdn.datatables.net/1.10.5/css/jquery.dataTables.min.css" rel="stylesheet" type="text/css" media="screen">
        <link href="css/garden.css" rel="stylesheet" type="text/css" media="screen">
      </head>
      <body>
@@ -807,6 +812,7 @@
                  [taoensso.sente                 :as sente]
                  [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]
                  [clojure.data.csv               :as csv]
+                 [pva-parrot.calc.pca            :as pca]
                  ))
 
      <<backend service websocket handlers>>
@@ -879,9 +885,15 @@
       (defmethod event-msg-handler :data-import/csv-sent
         [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
         (when ?data
-          (let [uid         (get-in ring-req [:session :uid])
-                parsed-data (csv/read-csv (:file-body ?data))
-                reply-msg   [:data-import/file-returned parsed-data]]
+          (let [uid          (get-in ring-req [:session :uid])
+                csv-data     (csv/read-csv (:file-body ?data))
+                csv-headings (first csv-data)
+                csv-body     (rest csv-data)
+                pca-data     (pca/components csv-body)
+                reply-msg    [:data-import/file-returned
+                              {:parsed-data {:headings csv-headings :body csv-body}
+                               :pca-data {:headings nil :body pca-data}}]]
+
             (chsk-send! uid reply-msg))))
 
       #+END_SRC
@@ -913,17 +925,11 @@
                [incanter.stats :refer :all]))
 
    (defn components [data]
-     "calulate principal components
-      WARNING: atm this is tailored to the iris example dataset!"
-     (let [mat (to-matrix (to-dataset data))
-           x (sel mat :cols (range 4))
-           species (sel mat :cols 4)
-           pca-data (principal-components x)
-           components (:rotation pca-data)
-           pc1 (sel components :cols 0)
-           pc2 (sel components :cols 1)]
-       {:x1 (to-vect (mmult x pc1))
-        :x2 (to-vect (mmult x pc2))}))
+     "Calulates principal components. "
+     (let [mat        (to-matrix (to-dataset data))
+           pca-data   (principal-components mat)
+           components (:rotation pca-data)]
+       (to-vect components)))
    #+END_SRC
 ** Libraries to be started
 

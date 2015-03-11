@@ -449,7 +449,7 @@
       (let [file-body (:import-file @app-state)
             event-data {:file-body file-body}]
         (.preventDefault this)
-        (websockets/chsk-send! [:pva-parrot/import-file event-data])))
+        (websockets/chsk-send! [:data-import/csv-sent event-data])))
 
     (defn submit-file-component [text]
       [:form.form-inline {:action ""}
@@ -562,15 +562,19 @@
         [pages-button :pva-workbook "Go to Workbook"]]])
     #+END_SRC
 
-
 *** Event handling
     :PROPERTIES:
     :noweb-ref: app event handling
     :END:
 
+    The scheme for event message naming is <topic>/<action>. For
+    example =:data-import/file-returned= identifies the event of finishing the
+    import of a data file. On the event sender side this reads as "file GETS
+    returned", on the receiver side it reads as "file WAS returned"
+
     #+BEGIN_SRC clojure
 
-    (defmethod websockets/handle-event :pvaparrot/imported-file
+    (defmethod websockets/handle-event :data-import/file-returned
       [[_ data]]
       (debugf "Imported data received: %s" data)
       (swap! app-state assoc :parsed-file data))
@@ -822,30 +826,42 @@
      #+END_SRC
 
 **** Event handling
-     Incoming events are handled by a multimethod wich dispatches on the =:id=
-     of the event.
+***** Basic setup
+      Incoming events are handled by a multimethod which dispatches on the =:id=
+      of the event.
 
-     #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers"
-     (defmulti event-msg-handler :id)
+      The default message handler bounces the message back to the sender if a
+      reply funcition was defined. The return message indicates that it did not
+      match any known events on the server.
 
-     (defmethod event-msg-handler :default
-       [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-       (when ?reply-fn
-         (?reply-fn {:unmatched-event-as-echoed-from-server event})))
+      #+BEGIN_SRC clojure :noweb no-export :noweb-ref "backend service websocket handlers"
+      (defmulti event-msg-handler :id)
 
-     (defmethod event-msg-handler :pva-parrot/import-file
-       [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-       (when ?data
-         (let [session   (:session ring-req)
-               uid       (:uid session)
-               raw-data  (csv/read-csv (:file-body ?data))
-               reply-msg [:pvaparrot/imported-file raw-data]]
-           (chsk-send! uid reply-msg))))
+      (defmethod event-msg-handler :default
+        [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+        (when ?reply-fn
+          (?reply-fn {:unmatched-event-as-echoed-from-server event})))
 
-     (sente/start-chsk-router! ch-chsk event-msg-handler)
+      (sente/start-chsk-router! ch-chsk event-msg-handler)
 
-     #+END_SRC
+      <<backend service websocket handlers data-import>>
 
+      #+END_SRC
+
+***** Data import
+      #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers data-import"
+
+      (defmethod event-msg-handler :data-import/csv-sent
+        [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+        (when ?data
+          (let [uid         (get-in ring-req [:session :uid])
+                parsed-data (csv/read-csv (:file-body ?data))
+                reply-msg   [:data-import/file-returned parsed-data]]
+            (chsk-send! uid reply-msg))))
+
+      #+END_SRC
+
+**** Tests
      #+BEGIN_SRC clojure :tangle ../test/pva_parrot/backend/service_test.clj
      (ns pva-parrot.backend.service-test
        (:require [clojure.test :refer :all]
@@ -853,8 +869,15 @@
 
      (deftest backend-service
        (testing "Event Handling"
+
+         (testing "setup"
+           (is chsk-send! "send function is defined"))
+
          (testing "file import"
-           (is (= nil (event-msg-handler {:id :pva-parrot/import-file}))))))
+           (let [message-id :data-import/csv-sent]
+
+             (is (= nil (event-msg-handler {:id message-id}))
+               "without given data it returns nil")))))
      #+END_SRC
 
 ** Calculations
@@ -877,18 +900,18 @@
        {:x1 (to-vect (mmult x pc1))
         :x2 (to-vect (mmult x pc2))}))
    #+END_SRC
-**** Libraries to be started
+** Libraries to be started
 
-***** Project Handling
+*** Project Handling
 
-      Libraries to manage and handle PVA projects and their resources. Includes version control and backup for projects.
+    Libraries to manage and handle PVA projects and their resources. Includes version control and backup for projects.
 
-***** Desktop App Shells
+*** Desktop App Shells
 
-      Libraries to run the app as a desktop application. Candidates for this are
-      node-webkit and atom-shell.
+    Libraries to run the app as a desktop application. Candidates for this are
+    node-webkit and atom-shell.
 
-***** I/O
+*** I/O
 
-      Libraries for getting data in and out of the app. This includes for example
-      file, database and web service access.
+    Libraries for getting data in and out of the app. This includes for example
+    file, database and web service access.

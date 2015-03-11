@@ -452,7 +452,7 @@
         (websockets/chsk-send! [:data-import/csv-sent event-data])))
 
     (defn submit-file-component [text]
-      [:form.form-inline {:action ""}
+      [:form.form-inline.well
 
        [:div.form-group
         [:label {:for "import-file"} text]
@@ -515,26 +515,39 @@
            contents]
           ]]))
 
-    (defn accordion-component []
+    (defn accordion-component [sections]
       [:div.panel-group {:role "tablist"}
-       [accordion-section {:key "analytical-data"
-                           :title "1. Analytical Data"}
-        [submit-file-component "Import CSV Dataset"]
-        [:h2 "Dataset:"]
-        [table-component (@app-state :parsed-file)]]
-       [accordion-section {:key "sign-components"
-                           :title "2. Significant Components"}]
-       [accordion-section {:key "comp-and-props"
-                           :title "3. Compositions and Proportions"}]])
+       (for [section sections]
+         (let [{:keys [key title content]} section]
+           [accordion-section {:key key :title title} content]))])
+
     #+END_SRC
 
 *** Pages
 
-    =pva-workbook=  is the main page for the PVA analysis. It shos the user
+    =pva-workbook=  is the main page for the PVA analysis. It shows the user
     interface for a single project. The idea is to guide the user from top to
     bottom, doing a PVA analysis along the way.
 
     #+BEGIN_SRC clojure :noweb-ref "app pages"
+    (defn workbook-section-data []
+      [:div
+       [submit-file-component "Import CSV Dataset"]
+       [:h2 "Dataset:"]
+       [table-component (@app-state :parsed-file)]])
+
+    (defn workbook-section-components []
+      [:form.form.well
+       [:p "Expected number of components"]
+       [:div.form-group
+        [:label {:for "components-min"} "min."]
+        [:input {:name "components-min" :type "number" :min 2 :value 2}]]
+       [:div.form-group
+        [:label {:for "components-max"} "max."]
+        [:input {:name "components-max" :type "number" :min 3 :value 5}]]])
+
+    (defn workbook-section-proportions []
+      [:div])
 
     (defn pva-workbook [project]
       [:div
@@ -543,9 +556,17 @@
        [:div.row
         [:div.col-lg-12
          [:h1 (str "Project: " (:name @project))]
-         [accordion-component]
-         ]]])
-
+         [accordion-component
+          [{:key "analytical-data"
+            :title "1. Analytical Data"
+            :content [workbook-section-data]}
+           {:key "sign-components"
+            :title "2. Significant Components"
+            :content [workbook-section-components]}
+           {:key "comp-and-props"
+            :title "3. Compositions and Proportions"
+            :content [workbook-section-proportions]}
+           ]]]]])
     #+END_SRC
 
     =welcome-page=  is the start screen of the application. Does not do much at
@@ -643,7 +664,11 @@
       [:#welcome-page
        [:img
         {:max-width "400px"
-         :float "left"}]]])
+         :float "left"}]]
+      [:.panel
+       [:.panel-title
+        {:text-align "center"
+         :font-size "25px"}]]])
 
    <<styles grid>>
    #+END_SRC

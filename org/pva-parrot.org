@@ -467,31 +467,31 @@
 
     #+BEGIN_SRC clojure
 
-       (defn table-header [headings]
-         [:tr (map (fn [cell] [:th cell]) headings)])
+    (defn table-header [headings]
+      [:tr (map (fn [cell] [:th cell]) headings)])
 
-       (defn table-row [row]
-         [:tr (map (fn [cell] [:td cell]) row)])
+    (defn table-row [row]
+      [:tr (map (fn [cell] [:td cell]) row)])
 
-       (defn table [data]
-         (if data
-           (let [headings (first data)
-                 body (rest data)]
-             [:table.table.table-striped.table-bordered {:cell-spacing 0 :width "100%"}
-              [:thead
-               [table-header headings]]
-              [:tbody
-               (map table-row body)
-               ]])
-           [:div]))
+    (defn table [data]
+      (if data
+        (let [headings (first data)
+              body (rest data)]
+          [:table.table.table-striped.table-bordered {:cell-spacing 0 :width "100%"}
+           [:thead
+            [table-header headings]]
+           [:tbody
+            (map table-row body)
+            ]])
+        [:div]))
 
-       (defn refresh-table [comp]
-         (.DataTable (js/$ (reagent/dom-node comp))))
+    (defn refresh-table [comp]
+      (.DataTable (js/$ (reagent/dom-node comp))))
 
-       (defn table-component [data]
-         (reagent/create-class {:reagent-render table
-                                :component-did-mount refresh-table
-                                :component-did-update refresh-table}))
+    (defn table-component [data]
+      (reagent/create-class {:reagent-render table
+                             :component-did-mount refresh-table
+                             :component-did-update refresh-table}))
 
     #+END_SRC
 

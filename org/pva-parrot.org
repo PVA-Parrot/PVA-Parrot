@@ -319,6 +319,7 @@
    <<app state>>
    <<app user interface components>>
    <<app pages>>
+   <<app page component>>
    <<app event handling>>
    <<app initialization and entry point>>
    #+END_SRC
@@ -398,6 +399,19 @@
     :PROPERTIES:
     :noweb-ref: app user interface components
     :END:
+
+    The page component holds references to the available pages. The active page
+    is stored in the =app-state= atom and =page-component= reflects this to show
+    the active page.
+    #+BEGIN_SRC clojure :noweb-ref "app page component"
+
+    (defn page-component []
+      (let [pages {:welcome [welcome-page]
+                   :pva-workbook [pva-workbook
+                                  (reagent/cursor app-state [:project])]}]
+        ((:page @app-state) pages)))
+
+    #+END_SRC
 
     The generic =styled-button= function is a Reagent component to render a
     button styled with twitter bootstrap css.
@@ -522,6 +536,10 @@
 
 *** Pages
 
+    =pva-workbook=  is the main page for the PVA analysis. It shos the user
+    interface for a single project. The idea is to guide the user from top to
+    bottom, doing a PVA analysis along the way.
+
     #+BEGIN_SRC clojure :noweb-ref "app pages"
 
     (defn pva-workbook [project]
@@ -534,21 +552,22 @@
          [accordion-component]
          ]]])
 
-    (defn welcome-page []
-      [:div.jumbotron
-       [:img.img-responsive {:src "img/parrot.png"}]
-       [:h1 "PVA Parrot"]
-       [:h2 "An application for polytopic vector analysis"]
-       [:hr]
-       [pages-button :pva-workbook "Go to Workbook"]])
-
-    (defn page-component []
-      (let [pages {:welcome [welcome-page]
-                   :pva-workbook [pva-workbook
-                                  (reagent/cursor app-state [:project])]}]
-        ((:page @app-state) pages)))
-
     #+END_SRC
+
+    =welcome-page=  is the start screen of the application. Does not do much at
+    all at the moment.
+
+    #+BEGIN_SRC clojure :noweb-ref "app pages"
+    (defn welcome-page []
+      [:div#welcome-page
+       [:div.jumbotron
+        [:img.img-responsive {:src "img/parrot.png"}]
+        [:h1 "PVA Parrot"]
+        [:h2 "An application for polytopic vector analysis"]
+        [:hr]
+        [pages-button :pva-workbook "Go to Workbook"]]])
+    #+END_SRC
+
 
 *** Event handling
     :PROPERTIES:
@@ -585,11 +604,10 @@
        <link href="css/garden.css" rel="stylesheet" type="text/css" media="screen">
      </head>
      <body>
-       <div id="container" class="container">
+       <div id="container" class="container-fluid">
          <!-- loading screen -->
          <div class="jumbotron">
-           <img src="img/parrot.png"  class="img-responsive" />
-           <h3>PVA Parrot loading...</h3>
+           <p>PVA Parrot loading...</p>
            <p>Initializing application, please wait...</p>
          </div>
        </div>
@@ -623,7 +641,11 @@
       {:padding "10px"
        :font-family "Helvetica Neue"
        :font-size   "16px"
-       :line-height 1.5}])
+       :line-height 1.5}
+      [:#welcome-page
+       [:img
+        {:max-width "400px"
+         :float "left"}]]])
 
    <<styles grid>>
    #+END_SRC

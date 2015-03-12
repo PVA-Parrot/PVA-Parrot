@@ -342,11 +342,12 @@
     #+BEGIN_SRC clojure
 
     (def app-state (atom {:page :welcome
-                              :import-file nil
-                              :parsed-data nil
-                              :pca-data nil
-                              :project {:name "My Project"}
-                              }))
+                          :project {:name "My Project"}
+                          :import-file nil
+                          :parsed-data nil
+                          :eigen-values nil
+                          :eigen-vectors nil
+                          }))
 
     #+END_SRC
 
@@ -547,7 +548,10 @@
         [:div.form-group
          [:label {:for "components-max"} "max."]
          [:input {:name "components-max" :type "number" :min 3 :value 5}]]]
-       [table-component (@app-state :pca-data)]
+       [:h3 "Eigenvalues"]
+       [table-component (@app-state :eigen-values)]
+       [:h3 "Eigenvectors"]
+       [table-component (@app-state :eigen-vectors)]
        ])
 
     (defn workbook-section-proportions []
@@ -603,7 +607,8 @@
       [[_ data]]
       (debugf "Imported raw data and PCA data received.")
       (swap! app-state assoc :parsed-data (:parsed-data data))
-      (swap! app-state assoc :pca-data (:pca-data data)))
+      (swap! app-state assoc :eigen-values (:eigen-values data))
+      (swap! app-state assoc :eigen-vectors (:eigen-vectors data)))
 
     #+END_SRC
 
@@ -880,22 +885,30 @@
       #+END_SRC
 
 ***** Data import
+
+      The Eigenvectors are determined via the PCA function as the =:rotation=
+      key's value.
       #+BEGIN_SRC clojure :noweb-ref "backend service websocket handlers data-import"
 
       (defmethod event-msg-handler :data-import/csv-sent
         [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
         (when ?data
-          (let [uid          (get-in ring-req [:session :uid])
-                csv-data     (csv/read-csv (:file-body ?data))
-                csv-headings (first csv-data)
-                csv-body     (rest csv-data)
-                pca-data     (pca/components csv-body)
-                reply-msg    [:data-import/file-returned
-                              {:parsed-data {:headings csv-headings :body csv-body}
-                               :pca-data {:headings nil :body pca-data}}]]
+          (let [uid            (get-in ring-req [:session :uid])
+                csv-data       (csv/read-csv (:file-body ?data))
+                csv-headings   (first csv-data)
+                csv-body       (rest csv-data)
+                pca-data       (pca/components csv-body)
+                pca-std-devs   (:std-dev pca-data)
+                eigen-values   (:eigen-values pca-data)
+                eigen-vectors  (:rotation pca-data)
+                reply-msg      [:data-import/file-returned
+                                {:parsed-data   {:headings csv-headings :body csv-body}
+                                 :std-devs      {:headings nil :body [pca-std-devs]}
+                                 :eigen-values  {:headings nil :body [eigen-values]}
+                                 :eigen-vectors {:headings nil :body eigen-vectors}
+                                 }]]
 
             (chsk-send! uid reply-msg))))
-
       #+END_SRC
 
 **** Tests
@@ -924,12 +937,21 @@
      (:require [incanter.core :refer :all]
                [incanter.stats :refer :all]))
 
+   (defn vals-to-lists [hash-map]
+     (zipmap (keys hash-map) (map to-vect (vals hash-map))))
+
+   (defn calc-eigenvalues [pca-data]
+     (map #(* % %) (:std-dev pca-data)))
+
    (defn components [data]
-     "Calulates principal components. "
-     (let [mat        (to-matrix (to-dataset data))
-           pca-data   (principal-components mat)
-           components (:rotation pca-data)]
-       (to-vect components)))
+     "Calulates principal components and eigen values.
+      Returns map of results with the actual results converted to list of lists."
+     (let [mat (to-matrix (to-dataset data))
+           pca-data (principal-components mat)]
+       (-> pca-data
+         (assoc :eigen-values (calc-eigenvalues pca-data))
+         (vals-to-lists))))
+
    #+END_SRC
 ** Libraries to be started
 

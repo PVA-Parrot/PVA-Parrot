@@ -120,7 +120,7 @@
      Backend calculations are using Incanter. Using the latest stabel version 1.5.6
      for now.
      #+BEGIN_SRC clojure
-     [incanter "1.5.6"]
+     [incanter "1.9.1-SNAPSHOT"]
      #+END_SRC
 
 
@@ -818,6 +818,7 @@
                  [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]
                  [clojure.data.csv               :as csv]
                  [pva-parrot.calc.pca            :as pca]
+                 [pva-parrot.io                  :as io]
                  ))
 
      <<backend service websocket handlers>>
@@ -894,10 +895,11 @@
         [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
         (when ?data
           (let [uid            (get-in ring-req [:session :uid])
-                csv-data       (csv/read-csv (:file-body ?data))
-                csv-headings   (first csv-data)
-                csv-body       (rest csv-data)
-                pca-data       (pca/components csv-body)
+                csv-raw        (csv/read-csv (:file-body ?data))
+                csv-headings   (first csv-raw)
+                csv-body       (rest csv-raw)
+                csv-matrix     (io/csv-to-matrix (:file-body ?data))
+                pca-data       (pca/components csv-matrix)
                 pca-std-devs   (:std-dev pca-data)
                 eigen-values   (:eigen-values pca-data)
                 eigen-vectors  (:rotation pca-data)
@@ -937,21 +939,72 @@
      (:require [incanter.core :refer :all]
                [incanter.stats :refer :all]))
 
+   (defn- transpose
+     "Transpose a matrix."
+     [mat]
+     (apply mapv vector mat))
+
    (defn vals-to-lists [hash-map]
      (zipmap (keys hash-map) (map to-vect (vals hash-map))))
 
    (defn calc-eigenvalues [pca-data]
      (map #(* % %) (:std-dev pca-data)))
 
-   (defn components [data]
+   (defn map-columns [f m]
+     (map #(apply f %) m))
+
+   (defn mins [m]
+     (map-columns min m))
+
+   (defn maxs [m]
+     (map-columns max m))
+
+   (defn normalize-compos [compos]
+     (let [transposed (transpose compos)
+           mins       (mins transposed)
+           maxs       (maxs transposed)
+           spread     (minus maxs mins)]
+       (-> (minus compos mins)
+         (div spread))))
+
+   (defn add-eigenvalues [pca-data]
+     (assoc pca-data :eigen-values (calc-eigenvalues pca-data)))
+
+   (defn components
      "Calulates principal components and eigen values.
       Returns map of results with the actual results converted to list of lists."
-     (let [mat (to-matrix (to-dataset data))
-           pca-data (principal-components mat)]
-       (-> pca-data
-         (assoc :eigen-values (calc-eigenvalues pca-data))
-         (vals-to-lists))))
+     [data]
+       (-> data
+         (normalize-compos)
+         (principal-components)
+         (add-eigenvalues)
+         (vals-to-lists)))
 
+   #+END_SRC
+
+** I/O
+
+   Libraries for getting data in and out of the app. This includes for example
+   file, database and web service access.
+
+   #+BEGIN_SRC clojure :tangle ../src/clj/pva_parrot/io.clj
+   (ns pva-parrot.io
+     (:require [clojure.data.csv :refer [read-csv]]))
+
+   (defn- extract-body
+     "Drop headings and sample name column from csv data."
+     [data]
+     (map rest (rest data)))
+
+   (defn- parse-numbers
+     "Parse CSV strings into numbers."
+     [csv-body]
+     (map #(map (fn [s] (Double/parseDouble s)) %) csv-body))
+
+   (defn csv-to-matrix [csv]
+     (-> (read-csv csv)
+       (extract-body)
+       (parse-numbers)))
    #+END_SRC
 ** Libraries to be started
 
@@ -963,8 +1016,3 @@
 
     Libraries to run the app as a desktop application. Candidates for this are
     node-webkit and atom-shell.
-
-*** I/O
-
-    Libraries for getting data in and out of the app. This includes for example
-    file, database and web service access.

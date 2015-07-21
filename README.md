@@ -37,8 +37,15 @@ boot-clj suggests some options for boot to prevent issues with the JVM:
 $ echo $BOOT_JVM_OPTIONS -Xmx2g -client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:MaxPermSize=128m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xverify:none
 ```
 
-I still had memory issues when running boot tasks. Upgrading to Java 8 seems to
-have fixed theses issues. So I recomment using Java 8.
+I still had memory issues when running boot tasks with such a configuration.
+Upgrading to Java 8 seems to have fixed these issues. So, I recommend using
+Java 8.
+
+# Building
+
+## Docker
+
+Build a Docker image via `sudo docker build -t pva-parrot/pva-parrot .`
 
 # Tests
 
@@ -59,7 +66,8 @@ https://drone.io/github.com/PVA-Parrot/PVA-Parrot/admin
 
 ## Running tests
 
-`boot run-tests`
+- Directly in local environment: `boot run-tests`
+- From Docker container: `sudo docker run pva-parrot/pva-parrot`
 
 ## Environments
 

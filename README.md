@@ -40,6 +40,11 @@ Java 8.
 
 Build a Docker image via `sudo docker build -t pvaparrot/pva-parrot .`
 
+## Documentation
+
+API documentation can be generated with `sudo boot apidoc`. The resulting
+documentation can be found in `target/doc`.
+
 # Tests
 
 ## Continuous integration

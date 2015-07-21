@@ -1,6 +1,11 @@
+(def project
+  {:version "0.1.0"
+   :title   "PVA Parrot"
+   :description "A GUI application for polytopic vector analysis (PVA)."
+   :sources #{"src/cljs" "src/clj"}})
 
 (set-env!
-  :source-paths #{"src/cljs" "src/clj"}
+  :source-paths (:sources project)
   :resource-paths #{"resources"}
   :dependencies '[
     [org.clojure/clojurescript "0.0-2814"]
@@ -11,16 +16,17 @@
     [boot-garden           "1.2.5-2"         :scope "test"]
     [com.taoensso/encore   "1.21.0"]
     [com.taoensso/sente    "1.3.0"]
-    [compojure            "1.3.1"]
-    [com.taoensso/timbre  "3.4.0"]
+    [compojure             "1.3.1"]
+    [com.taoensso/timbre   "3.4.0"]
+    [funcool/boot-codeina  "0.1.0-SNAPSHOT"  :scope "test"]
     [garden                "1.2.5"]
-    [http-kit             "2.1.19"]
-    [incanter "1.9.1-SNAPSHOT"]
+    [http-kit              "2.1.19"]
+    [incanter              "1.9.1-SNAPSHOT"]
     [jeluard/boot-notify   "0.1.1"           :scope "test"]
-    [org.clojure/data.csv "0.1.2"]
+    [org.clojure/data.csv  "0.1.2"]
     [pandeiro/boot-http    "0.6.3-SNAPSHOT"  :scope "test"]
     [reagent               "0.5.0-alpha3"]
-    [ring/ring-core       "1.3.2"]
+    [ring/ring-core        "1.3.2"]
   ])
 
 (require
@@ -29,6 +35,7 @@
   '[adzerk.boot-reload    :refer [reload]]
   '[adzerk.boot-test      :refer :all]
   '[boot-garden.core      :refer [garden]]
+  '[funcool.boot-codeina  :refer [apidoc]]
   '[jeluard.boot-notify   :refer [notify]]
   '[pandeiro.boot-http    :refer [serve]])
 
@@ -74,6 +81,7 @@
   []
   (comp (development)
     (dev-run)))
+
 (deftask run-tests
   "Run all PVA-Parrot tests"
   []
@@ -88,6 +96,15 @@
       :port 3333)))
 
 (task-options!
-  pom {:project 'pva-parrot
-       :version "0.1.0"
-       :description "A GUI application for polytopic vector analysis (PVA)."})
+  pom {:project     'pva-parrot
+       :version     (:version project)
+       :description (:description project)})
+
+(task-options!
+  apidoc {:version     (:version project)
+          :title       (:title project)
+          :sources     (:sources project)
+          :description (:description project)
+          :src-uri     "https://github.com/PVA-Parrot/PVA-Parrot/tree/master/"
+          :target      "target/doc"
+          })

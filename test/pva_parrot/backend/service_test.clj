@@ -1,4 +1,3 @@
-
 (ns pva-parrot.backend.service-test
   (:require [clojure.test :refer :all]
             [pva-parrot.backend.service :refer :all]))

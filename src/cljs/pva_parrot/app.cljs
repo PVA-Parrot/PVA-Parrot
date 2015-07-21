@@ -4,7 +4,6 @@
             [pva-parrot.websockets :as websockets]
             [reagent.core :as reagent :refer [atom]]))
 
-
 (def app-state (atom {:page :welcome
                       :project {:name "My Project"}
                       :import-file nil
@@ -12,7 +11,6 @@
                       :eigen-values nil
                       :eigen-vectors nil
                       }))
-
 
 (defn swap-page [target]
   (swap! app-state assoc :page target))
@@ -170,6 +168,7 @@
         :title "3. Compositions and Proportions"
         :content [workbook-section-proportions]}
        ]]]]])
+
 (defn welcome-page []
   [:div#welcome-page
    [:div.jumbotron
@@ -185,7 +184,6 @@
                               (reagent/cursor app-state [:project])]}]
     ((:page @app-state) pages)))
 
-
 (defmethod websockets/handle-event :data-import/file-returned
   [[_ data]]
   (debugf "Imported raw data and PCA data received.")
@@ -196,7 +194,6 @@
   (swap! app-state assoc :num-samples (:num-samples data))
   (swap! app-state assoc :eigen-values (:eigen-values data))
   (swap! app-state assoc :eigen-vectors (:eigen-vectors data)))
-
 
 (defn init []
   (reagent.core/render-component [page-component]

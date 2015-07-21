@@ -1,6 +1,4 @@
 # PVA-Parrot
-[![Code Climate](https://codeclimate.com/github/PVA-Parrot/PVA-Parrot/badges/gpa.svg)](https://codeclimate.com/github/PVA-Parrot/PVA-Parrot)
-[![Build Status](https://circleci.com/gh/PVA-Parrot/PVA-Parrot.svg?style=shield&circle-token=24f51fc606459d9ab4e663493f91bf07cb16f584)](https://circleci.com/gh/PVA-Parrot/PVA-Parrot)
 
 PVA-Parrot is a GUI application for doing polytopic vector analysis. This is the
 main application.
@@ -45,6 +43,8 @@ Build a Docker image via `sudo docker build -t pvaparrot/pva-parrot .`
 # Tests
 
 ## Continuous integration
+
+[![Build Status](https://circleci.com/gh/PVA-Parrot/PVA-Parrot.svg?style=shield&circle-token=24f51fc606459d9ab4e663493f91bf07cb16f584)](https://circleci.com/gh/PVA-Parrot/PVA-Parrot)
 
 Circle CI is being used as a CI solution:
 https://circleci.com/gh/PVA-Parrot/PVA-Parrot

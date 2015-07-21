@@ -1,4 +1,3 @@
-
 (ns pva-parrot.app
   (:require [taoensso.encore :as enc    :refer (tracef debugf infof warnf errorf)]
             [pva-parrot.plot :as plot]

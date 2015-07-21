@@ -1,4 +1,3 @@
-
 (ns pva-parrot.websockets
   (:require-macros
    [cljs.core.async.macros :as asyncm :refer (go go-loop)])

@@ -1,4 +1,3 @@
-
 (ns pva-parrot.backend.service
   (:require [ring.middleware.params         :as params]
             [ring.middleware.keyword-params :as keyword-params]

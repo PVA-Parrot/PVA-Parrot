@@ -1,4 +1,3 @@
-
 (ns pva-parrot.plot
   (:require [reagent.core :as reagent]))
 

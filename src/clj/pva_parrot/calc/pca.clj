@@ -1,4 +1,3 @@
-
 (ns pva-parrot.calc.pca
   (:require [incanter.core :refer :all]
             [incanter.stats :refer :all]

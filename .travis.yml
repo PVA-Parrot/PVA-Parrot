@@ -1,9 +1,0 @@
-language: clojure
-jdk:
-- oraclejdk8
-install:
-# Install Boot
-- wget https://github.com/boot-clj/boot/releases/download/2.0.0-rc12/boot.sh
-- mv boot.sh boot && chmod a+x boot
-
-script: ./boot run-tests

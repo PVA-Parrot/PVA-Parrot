@@ -1,7 +1,6 @@
 # PVA-Parrot
 [![Code Climate](https://codeclimate.com/github/PVA-Parrot/PVA-Parrot/badges/gpa.svg)](https://codeclimate.com/github/PVA-Parrot/PVA-Parrot)
-[![Build Status](https://travis-ci.org/PVA-Parrot/PVA-Parrot.svg?branch=master)](https://travis-ci.org/PVA-Parrot/PVA-Parrot)
-
+[![Build Status](https://circleci.com/gh/PVA-Parrot/PVA-Parrot.svg?style=shield&circle-token=24f51fc606459d9ab4e663493f91bf07cb16f584)](https://circleci.com/gh/PVA-Parrot/PVA-Parrot)
 
 PVA-Parrot is a GUI application for doing polytopic vector analysis. This is the
 main application.
@@ -11,9 +10,7 @@ A JVM installation is required.
 
 [Boot][1] needs to be installed, download [boot.sh][2], then:
 
-``` sh
-$ mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin
-```
+`mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin`
 
 # Usage
 
@@ -33,9 +30,7 @@ The backend is available under http://localhost:3333
 boot-clj suggests some options for boot to prevent issues with the JVM:
 [https://github.com/boot-clj/boot/wiki/JVM-Options][boot JVM Options]
 
-```sh
-$ echo $BOOT_JVM_OPTIONS -Xmx2g -client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:MaxPermSize=128m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xverify:none
-```
+`echo $BOOT_JVM_OPTIONS -Xmx2g -client -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:MaxPermSize=128m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xverify:none`
 
 I still had memory issues when running boot tasks with such a configuration.
 Upgrading to Java 8 seems to have fixed these issues. So, I recommend using
@@ -45,29 +40,24 @@ Java 8.
 
 ## Docker
 
-Build a Docker image via `sudo docker build -t pva-parrot/pva-parrot .`
+Build a Docker image via `sudo docker build -t pvaparrot/pva-parrot .`
 
 # Tests
 
 ## Continuous integration
 
-Travis CI is being used as a CI solution:
-https://travis-ci.org/PVA-Parrot/PVA-Parrot
+Circle CI is being used as a CI solution:
+https://circleci.com/gh/PVA-Parrot/PVA-Parrot
 
-Configuration for Travis CI can be found in `travis.yml`
+Configuration can be found in `circle.yml`
 
-### Additional CI (deprecated)
-
-Drone.io was also setup, but had some issues with getting the Emacs code weaving
-to work: https://drone.io/github.com/PVA-Parrot/PVA-Parrot
-
-Drone.io config is stored on the service:
-https://drone.io/github.com/PVA-Parrot/PVA-Parrot/admin
+The Docker image gets build on the CI, tested and then pushed to Docker Hub
+automatically.
 
 ## Running tests
 
 - Directly in local environment: `boot run-tests`
-- From Docker container: `sudo docker run pva-parrot/pva-parrot`
+- From Docker container: `sudo docker run pvaparrot/pva-parrot`
 
 ## Environments
 

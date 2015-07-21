@@ -7,20 +7,20 @@
     [adzerk/boot-cljs      "0.0-2814-1"      :scope "test"]
     [adzerk/boot-cljs-repl "0.1.9"           :scope "test"]
     [adzerk/boot-reload    "0.2.4"           :scope "test"]
-    [pandeiro/boot-http    "0.6.3-SNAPSHOT"  :scope "test"]
-    [jeluard/boot-notify   "0.1.1"           :scope "test"]
-    [boot-garden           "1.2.5-2"         :scope "test"]
     [adzerk/boot-test      "1.0.4"           :scope "test"]
-    [reagent               "0.5.0-alpha3"]
+    [boot-garden           "1.2.5-2"         :scope "test"]
     [com.taoensso/encore   "1.21.0"]
     [com.taoensso/sente    "1.3.0"]
-    [garden                "1.2.5"]
-    [ring/ring-core       "1.3.2"]
-    [http-kit             "2.1.19"]
     [compojure            "1.3.1"]
     [com.taoensso/timbre  "3.4.0"]
-    [org.clojure/data.csv "0.1.2"]
+    [garden                "1.2.5"]
+    [http-kit             "2.1.19"]
     [incanter "1.9.1-SNAPSHOT"]
+    [jeluard/boot-notify   "0.1.1"           :scope "test"]
+    [org.clojure/data.csv "0.1.2"]
+    [pandeiro/boot-http    "0.6.3-SNAPSHOT"  :scope "test"]
+    [reagent               "0.5.0-alpha3"]
+    [ring/ring-core       "1.3.2"]
   ])
 
 (require
@@ -28,9 +28,9 @@
   '[adzerk.boot-cljs-repl :refer [cljs-repl start-repl]]
   '[adzerk.boot-reload    :refer [reload]]
   '[adzerk.boot-test      :refer :all]
-  '[pandeiro.boot-http    :refer [serve]]
   '[boot-garden.core      :refer [garden]]
-  '[jeluard.boot-notify   :refer [notify]])
+  '[jeluard.boot-notify   :refer [notify]]
+  '[pandeiro.boot-http    :refer [serve]])
 
 (deftask build []
   (comp

@@ -9,12 +9,5 @@ pom.xml.asc
 .lein-repl-history
 .lein-plugins/
 .lein-failures
-/src/clj/**/*.clj
-/src/cljs/**/*.cljs
-/test
-/org/pva-parrot.html
-/build.boot
-org/*\[\*Org*
-/.nrepl-history
-/.nrepl-port
-/resources/index.html
+.nrepl-port
+.nrepl-history

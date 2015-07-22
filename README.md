@@ -4,11 +4,20 @@ PVA-Parrot is a GUI application for doing polytopic vector analysis. This is the
 main application.
 
 # Installation
+
+## Docker container
+
+A Docker container is available from DockerHub `pvaparrot/pva-parrot`.
+
+## Manually
+
 A JVM installation is required.
 
 [Boot][1] needs to be installed, download [boot.sh][2], then:
 
 `mv boot.sh boot && chmod a+x boot && sudo mv boot /usr/local/bin`
+
+Once you run a boot task, it will install the required dependencies.
 
 # Usage
 
@@ -17,7 +26,7 @@ tasks. PVA-Parrot specific tasks are defined in `build.boot`.
 
 ## Run application with backend
 
-`boot serve-backend dev`
+Simply run `boot dev`
 
 This will make the frontend available under http://localhost:3000/
 The backend is available under http://localhost:3333
@@ -42,7 +51,7 @@ Build a Docker image via `sudo docker build -t pvaparrot/pva-parrot .`
 
 ## Documentation
 
-API documentation can be generated with `sudo boot apidoc`. The resulting
+API documentation can be generated with `boot apidoc`. The resulting
 documentation can be found in `target/doc`.
 
 # Tests
@@ -61,7 +70,7 @@ automatically.
 
 ## Running tests
 
-- Directly in local environment: `boot run-tests`
+- Directly in local environment: `boot tests`
 - From Docker container: `sudo docker run pvaparrot/pva-parrot`
 
 ## Environments

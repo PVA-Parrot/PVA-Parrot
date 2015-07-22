@@ -14,4 +14,4 @@ RUN boot
 
 COPY . /usr/src/pva
 
-ENTRYPOINT ["boot", "run-tests"]
+ENTRYPOINT ["boot", "tests"]

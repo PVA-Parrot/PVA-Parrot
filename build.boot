@@ -24,6 +24,7 @@
     [compojure "1.4.0"]
     [com.taoensso/timbre "4.0.2"]
     [funcool/boot-codeina "0.1.0-SNAPSHOT" :scope "test"]
+    [garden "1.2.5"]
     [http-kit "2.1.19"]
     [incanter "1.9.1-SNAPSHOT"]
     [jeluard/boot-notify "0.2.0" :scope "test"]

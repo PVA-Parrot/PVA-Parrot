@@ -10,7 +10,7 @@ ENV BOOT_AS_ROOT yes
 RUN mkdir -p /usr/src/pva
 WORKDIR /usr/src/pva
 COPY build.boot /usr/src/pva/
-RUN boot
+RUN boot deps
 
 COPY . /usr/src/pva
 

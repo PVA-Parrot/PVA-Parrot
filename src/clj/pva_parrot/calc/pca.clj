@@ -14,7 +14,8 @@
   (zipmap (keys hash-map) (map to-vect (vals hash-map))))
 
 (defn map-columns
-  "Map a function to all matrix columns, applying the function to all values in a column."
+  "Map a function to all matrix columns, applying the function to all values in
+  a column."
   [f m]
   (map #(apply f %) m))
 
@@ -37,7 +38,7 @@
               (sds m)
               (mins m)
               (maxs m)]
-           (transpose))})
+             (transpose))})
 
 (defn normalize-compos
   "Normalize compositions to the range of its min to max value."
@@ -47,11 +48,12 @@
         maxs       (maxs transposed)
         spread     (minus maxs mins)]
     (-> compos
-      (minus mins)
-      (div spread))))
+        (minus mins)
+        (div spread))))
 
 (defn calc-eigenvalues
-  "Calculates eigenvalues from the given pca-data as squares of the standard deviations."
+  "Calculates eigenvalues from the given pca-data as squares of the standard
+  deviations."
   [pca-data]
   (map #(* % %) (:std-dev pca-data)))
 
@@ -64,10 +66,9 @@
   "Calulates principal components and eigen values.
    Returns map of results with the actual results converted to list of lists."
   [data]
-    (-> data
+  (-> data
       (normalize-compos)
       (principal-components)
-      ; (decomp-eigenvalue)
+      ;; (decomp-eigenvalue)
       (add-eigenvalues)
-      (vals-to-lists)
-      ))
+      (vals-to-lists)))

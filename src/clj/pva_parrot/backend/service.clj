@@ -7,8 +7,7 @@
             [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]
             [clojure.data.csv               :as csv]
             [pva-parrot.calc.pca            :as pca]
-            [pva-parrot.io                  :as io]
-            ))
+            [pva-parrot.io                  :as io]))
 
 (let [{:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
       (sente/make-channel-socket! sente-web-server-adapter {})]
@@ -25,8 +24,6 @@
   (when ?reply-fn
     (?reply-fn {:unmatched-event-as-echoed-from-server event})))
 
-(sente/start-chsk-router! ch-chsk event-msg-handler)
-
 (defmethod event-msg-handler :data-import/csv-sent
   [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
   (when ?data
@@ -38,12 +35,12 @@
           num-samples    (count csv-body)
           csv-matrix     (io/csv-to-matrix (:file-body ?data))
           summary-variables (->> csv-matrix
-                              (pca/transpose)
-                              (pca/summarize (rest csv-headings)))
+                                 (pca/transpose)
+                                 (pca/summarize (rest csv-headings)))
           normalized-data (pca/normalize-compos csv-matrix)
           summary-normalized (->> normalized-data
-                              (pca/transpose)
-                              (pca/summarize (rest csv-headings)))
+                                  (pca/transpose)
+                                  (pca/summarize (rest csv-headings)))
           pca-data       (pca/components csv-matrix)
           pca-std-devs   (:std-dev pca-data)
           eigen-values   (:eigen-values pca-data)
@@ -58,16 +55,15 @@
                            :eigen-values  {:headings nil :body [eigen-values]}
                            :eigen-vectors {:headings nil :body eigen-vectors}
                            }]]
-
       (chsk-send! uid reply-msg))))
+
+(sente/start-chsk-router! ch-chsk event-msg-handler)
 
 (defroutes api-handlers
   (GET "/" [] "You found the PVA Parrot backend service!")
   (GET  "/chsk" request (ring-ajax-get-or-ws-handshake request))
-  (POST "/chsk" request (ring-ajax-post                request))
-  )
-
+  (POST "/chsk" request (ring-ajax-post request)))
 
 (def api (-> api-handlers
-           (keyword-params/wrap-keyword-params)
-           (params/wrap-params)))
+             (keyword-params/wrap-keyword-params)
+             (params/wrap-params)))

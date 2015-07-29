@@ -6,11 +6,14 @@
 (m/set-current-implementation :vectorz)
 
 (defn transpose
-  "Transpose a matrix."
+  "Transpose the matrix mat."
   [mat]
   (apply mapv vector mat))
 
-(defn vals-to-lists [hash-map]
+(defn vals-to-lists
+  ;; TODO: Add docstring
+  ""
+  [hash-map]
   (zipmap (keys hash-map) (map to-vect (vals hash-map))))
 
 (defn map-columns
@@ -19,16 +22,24 @@
   [f m]
   (map #(apply f %) m))
 
-(defn mins [m]
+(defn mins
+  "Returns a vector with the minimal values of every column in matrix m."
+  [m]
   (map-columns min m))
 
-(defn maxs [m]
+(defn maxs
+  "Returns a vector with the maximum values of every column in matrix m."
+  [m]
   (map-columns max m))
 
-(defn means [m]
+(defn means
+  "Returns a vector with the mean values of every column in matrix m."
+  [m]
   (map mean m))
 
-(defn sds [m]
+(defn sds
+  "Returns a vector with the standard deviations of every column in matrix m."
+  [m]
   (map sd m))
 
 (defn summarize [labels m]

@@ -32,7 +32,8 @@
     [org.clojure/data.csv "0.1.2"]
     [pandeiro/boot-http "0.6.3-SNAPSHOT" :scope "test"]
     [reagent "0.5.0"]
-    [ring/ring-core "1.4.0"]])
+    [ring/ring-core "1.4.0"]
+    [org.clojure/test.check "0.7.0" :scope "test"]])
 
 (require
   '[adzerk.boot-cljs :refer [cljs]]

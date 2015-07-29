@@ -63,17 +63,17 @@
 ;;; Building
 
 (task-options!
-  pom {:project     'pva-parrot
-       :version     (:version project)
-       :description (:description project)})
+ pom {:project     'pva-parrot
+      :version     (:version project)
+      :description (:description project)})
 
 (task-options!
-  apidoc {:version     (:version project)
-          :title       (:title project)
-          :sources     (:sources project)
-          :description (:description project)
-          :src-uri     "https://github.com/PVA-Parrot/PVA-Parrot/tree/master/"
-          :target      "target/doc"})
+ apidoc {:version     (:version project)
+         :title       (:title project)
+         :sources     (:sources project)
+         :description (:description project)
+         :src-uri     "https://github.com/PVA-Parrot/PVA-Parrot/tree/master/"
+         :target      "target/doc"})
 
 (deftask build []
   (comp (notify)

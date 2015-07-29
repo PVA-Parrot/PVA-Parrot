@@ -1,8 +1,11 @@
 (ns pva-parrot.backend.service
+  (:gen-class)
   (:require [ring.middleware.params         :as params]
             [ring.middleware.keyword-params :as keyword-params]
+            [ring.util.response             :refer [resource-response content-type]]
             [compojure.core                 :refer :all]
             [compojure.route                :as route]
+            [org.httpkit.server             :as httpkit]
             [taoensso.sente                 :as sente]
             [taoensso.sente.server-adapters.http-kit :refer (sente-web-server-adapter)]
             [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]
@@ -63,10 +66,18 @@
 (sente/start-chsk-router! ch-chsk event-msg-handler)
 
 (defroutes api-handlers
+  (GET  "/" [] (-> (resource-response "index.html" {:root ""})
+                   (content-type "text/html")))
+  (route/resources "/js" {:root "js"})
+  (route/resources "/css" {:root "css"})
+  (route/resources "/img" {:root "img"})
   (GET  "/chsk" request (ring-ajax-get-or-ws-handshake request))
-  (POST "/chsk" request (ring-ajax-post request))
-  (route/files "/" {:root "target"}))
+  (POST "/chsk" request (ring-ajax-post request)))
 
 (def api (-> api-handlers
              (keyword-params/wrap-keyword-params)
              (params/wrap-params)))
+
+(defn -main []
+  (let [port (get (System/getenv) "PORT" 3333)]
+    (httpkit/run-server api {:port port})))

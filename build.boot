@@ -68,6 +68,12 @@
       :description (:description project)})
 
 (task-options!
+ jar {:main 'pva-parrot.backend.service})
+
+(task-options!
+ aot {:namespace '#{pva-parrot.backend.service}})
+
+(task-options!
  apidoc {:version     (:version project)
          :title       (:title project)
          :sources     (:sources project)
@@ -82,6 +88,15 @@
                 :vendors ["webkit"]
                 :auto-prefix #{:align-items}
                 :output-to "css/garden.css")))
+
+;;; Packaging
+
+(deftask package []
+  (comp (build)
+        (pom)
+        (uber)
+        (aot)
+        (jar)))
 
 ;;; Running
 

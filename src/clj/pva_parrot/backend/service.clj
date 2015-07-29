@@ -2,6 +2,7 @@
   (:require [ring.middleware.params         :as params]
             [ring.middleware.keyword-params :as keyword-params]
             [compojure.core                 :refer :all]
+            [compojure.route                :as route]
             [taoensso.sente                 :as sente]
             [taoensso.sente.server-adapters.http-kit :refer (sente-web-server-adapter)]
             [taoensso.timbre                :as timbre :refer (tracef debugf infof warnf errorf)]
@@ -10,7 +11,9 @@
             [pva-parrot.io                  :as io]))
 
 (let [{:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
-      (sente/make-channel-socket! sente-web-server-adapter {})]
+      (sente/make-channel-socket!
+       sente-web-server-adapter
+       {:user-id-fn (fn [ring-req] (:client-id ring-req))})]
   (def ring-ajax-post                ajax-post-fn)
   (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
   (def ch-chsk                       ch-recv)
@@ -27,7 +30,7 @@
 (defmethod event-msg-handler :data-import/csv-sent
   [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
   (when ?data
-    (let [uid            (get-in ring-req [:session :uid])
+    (let [uid            (get-in ring-req [:params :client-id])
           csv-raw        (csv/read-csv (:file-body ?data))
           csv-headings   (first csv-raw)
           csv-body       (rest csv-raw)
@@ -60,9 +63,9 @@
 (sente/start-chsk-router! ch-chsk event-msg-handler)
 
 (defroutes api-handlers
-  (GET "/" [] "You found the PVA Parrot backend service!")
   (GET  "/chsk" request (ring-ajax-get-or-ws-handshake request))
-  (POST "/chsk" request (ring-ajax-post request)))
+  (POST "/chsk" request (ring-ajax-post request))
+  (route/files "/" {:root "target"}))
 
 (def api (-> api-handlers
              (keyword-params/wrap-keyword-params)

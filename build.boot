@@ -85,12 +85,11 @@
 
 ;;; Running
 
-(deftask serve-backend []
-  (comp
-    (serve :handler 'pva-parrot.backend.service/api
-      :reload true
-      :httpkit true
-      :port 3333)))
+(task-options!
+ serve {:handler 'pva-parrot.backend.service/api
+        :reload true
+        :httpkit true
+        :port 3333})
 
 (deftask tests
   "Run all PVA-Parrot tests"
@@ -105,7 +104,6 @@
   reloading code inserted."
   []
   (comp (production)
-        (serve-backend)
         (serve)
         (watch)
         (build)))
@@ -113,8 +111,7 @@
 (deftask dev
   "Simple alias to run application in development mode"
   []
-  (comp (serve-backend)
-        (serve)
+  (comp (serve)
         (watch)
         (reload)
         (build)))

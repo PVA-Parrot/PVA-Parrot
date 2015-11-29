@@ -1,7 +1,7 @@
 FROM incanter/incanter:1.9.1-SNAPSHOT
 
 # boot
-RUN wget https://github.com/boot-clj/boot/releases/download/2.0.0/boot.sh
+RUN wget https://github.com/boot-clj/boot-bin/releases/download/2.4.2/boot.sh
 RUN mv boot.sh boot && chmod a+x boot && mv boot /usr/local/bin
 
 ENV BOOT_AS_ROOT yes

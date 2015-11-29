@@ -28,8 +28,7 @@ tasks. PVA-Parrot specific tasks are defined in `build.boot`.
 
 Simply run `boot dev`
 
-This will make the frontend available under http://localhost:3000/
-The backend is available under http://localhost:3333
+This will make the frontend available under http://localhost:3333/
 
 ## Troubleshooting
 ### JVM Config and Java 8

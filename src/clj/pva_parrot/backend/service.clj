@@ -33,34 +33,29 @@
 (defmethod event-msg-handler :data-import/csv-sent
   [{:as event-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
   (when ?data
-    (let [uid            (get-in ring-req [:params :client-id])
-          csv-raw        (csv/read-csv (:file-body ?data))
-          csv-headings   (first csv-raw)
-          csv-body       (rest csv-raw)
-          num-variables  (- (count csv-headings) 1)
-          num-samples    (count csv-body)
-          csv-matrix     (io/csv-to-matrix (:file-body ?data))
-          summary-variables (->> csv-matrix
-                                 (pca/transpose)
-                                 (pca/summarize (rest csv-headings)))
+    (let [uid      (get-in ring-req [:params :client-id])
+          csv-data (-> ?data
+                       :file-body
+                       csv/read-csv
+                       io/process-csv)
+          csv-matrix      (:matrix csv-data)
           normalized-data (pca/normalize-compos csv-matrix)
-          summary-normalized (->> normalized-data
-                                  (pca/transpose)
-                                  (pca/summarize (rest csv-headings)))
-          pca-data       (pca/components csv-matrix)
-          pca-std-devs   (:std-dev pca-data)
-          eigen-values   (:eigen-values pca-data)
-          eigen-vectors  (:rotation pca-data)
-          reply-msg      [:data-import/file-returned
-                          {:parsed-data   {:headings csv-headings :body csv-body}
-                           :num-samples   num-samples
-                           :num-variables num-variables
-                           :summary-variables summary-variables
-                           :summary-normalized summary-normalized
-                           :std-devs      {:headings nil :body [pca-std-devs]}
-                           :eigen-values  {:headings nil :body [eigen-values]}
-                           :eigen-vectors {:headings nil :body eigen-vectors}
-                           }]]
+          pca-data        (pca/components csv-matrix)
+          {:keys [headings body num-samples num-variables]} csv-data
+          {:keys [std-dev eigen-values rotation]} pca-data
+          reply-msg       [:data-import/file-returned
+                           {:parsed-data {:headings headings
+                                          :body body}
+                            :num-samples num-samples
+                            :num-variables num-variables
+                            :summary-variables (pca/summarize-variables csv-matrix)
+                            :summary-normalized (pca/summarize-variables normalized-data)
+                            :std-devs      {:headings nil
+                                            :body [std-dev]}
+                            :eigen-values  {:headings nil
+                                            :body [eigen-values]}
+                            :eigen-vectors {:headings nil
+                                            :body rotation}}]]
       (chsk-send! uid reply-msg))))
 
 (sente/start-chsk-router! ch-chsk event-msg-handler)

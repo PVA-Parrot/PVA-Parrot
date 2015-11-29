@@ -51,6 +51,10 @@
               (maxs m)]
              (transpose))})
 
+(defn summarize-variables [variables m]
+  (->> (transpose m)
+       (summarize variables)))
+
 (defn normalize-compos
   "Normalize compositions to the range of its min to max value."
   [compos]
